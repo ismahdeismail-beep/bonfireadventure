@@ -117,6 +117,20 @@ The live audit found **no** CSP, HSTS or `X-Frame-Options` and no working login
 This is a prototype, not production: there is no TLS termination, no email
 delivery (reset links are shown on screen), and no payment provider.
 
+## Deploy to Vercel
+
+The repo ships with `../api/index.js` + `../vercel.json`, so every push to `main`
+deploys through the GitHub→Vercel connection as a single serverless function.
+
+1. In the Vercel project, set at least:
+   `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`,
+   `SESSION_SECRET`, `ADMIN_HANDLE`, `ADMIN_PASSWORD`.
+   Optionally `PAY_*` (M-Pesa panel) and `WHATSAPP_NUMBER`.
+2. Set `STORE=supabase`. Leave `DATA_FILE` alone (writes are backed onto `/tmp`).
+3. Redeploy. `/api/index` handles every route including `/img/*` and `/favicon.webp`.
+4. Check `/healthz` returns `{"ok":true,...}`. If the function fails to boot,
+   the build logs print the failure from `ensureReady()`.
+
 ## Why no dependency
 
 The target environment had Node and nothing else (no Docker, no Composer), and
