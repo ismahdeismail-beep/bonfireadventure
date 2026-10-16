@@ -12,7 +12,7 @@ All live-site observations in this repo were captured on **2026-10-16**.
 |---|---|---|
 | 1 — Audit | Document the live site section by section | 🟡 in progress |
 | 2 — Requirements | Agreed behaviour for the new build | 🟡 in progress |
-| 3 — Design / build | Implementation | ⬜ not started |
+| 3 — Design / build | Local prototype of the rebuilt site | 🟢 runnable — `app/` |
 
 ## Non-negotiable constraints (Phase 1)
 
@@ -48,16 +48,19 @@ docs/
   requirements/   What the rebuild must do (derived from the constraints above)
   decisions/      ADR-style records of decisions taken, with rationale
 evidence/         Non-contact raw evidence (sitemaps, HTTP status matrix)
+app/              Runnable local prototype (package browsing, booking, accounts)
 ```
 
 Start with **`docs/audit/README.md`** (the audit checklist and index), then
 **`docs/audit/08-findings-log.md`** (what's actually wrong today), then the
-`docs/requirements/` set.
+`docs/requirements/` set. For the running prototype, see **`app/README.md`**.
 
 ## A note on method
 
 The audit follows the practical review framework rather than a pixel-perfect
 reproduction: content and structure are confirmed from the rendered site and
 its own sitemaps; purely visual and interaction details are explicitly marked
-**UNVERIFIED** where they could not be confirmed from static evidence. Nothing
-in this repo proposes a redesign yet — Phase 1 only describes what exists.
+**UNVERIFIED** where they could not be confirmed from static evidence. The
+audit itself only describes what exists; the rebuild lives in `docs/requirements/`
+(agreed behaviour), `docs/decisions/` (open choices) and `app/` (a runnable
+prototype of that behaviour).

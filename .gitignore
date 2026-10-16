@@ -7,8 +7,15 @@ captures/
 # Local environment / secrets
 .env
 .env.*
+# ...but the example is a tracked template, not a secret.
+!.env.example
+!app/.env.example
 *.pem
 *.key
+
+# Prototype runtime state (generated seed database)
+app/data/
+node_modules/
 
 # Editor / OS
 .DS_Store

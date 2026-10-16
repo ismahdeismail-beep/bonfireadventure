@@ -15,9 +15,11 @@ fail=0
 
 say() { printf '%s\n' "$*"; }
 
-# --- Pass 1: outside docs/, flag mechanisms and values -----------------------
+# --- Pass 1: outside docs/, flag contact *values* and value-bearing links ----
+# (The mechanism names wa.me/mailto:/tel: are allowed in code; only links that
+#  actually carry a number/address are flagged.)
 mapfile -t p1 < <(grep -rInE \
-  'wa\.me|mailto:|tel:[+0-9]|[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}|\+254|(^|[^0-9])0[0-9]{2}[ .-]?[0-9]{3}[ .-]?[0-9]{3}([^0-9]|$)' \
+  'wa\.me/[0-9]|mailto:[^"'"'"'< ]+@|tel:\+?[0-9]|[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}|\+254|(^|[^0-9])0[0-9]{2}[ .-]?[0-9]{3}[ .-]?[0-9]{3}([^0-9]|$)' \
   --include='*.md' --include='*.xml' --include='*.sh' --include='*.js' --include='*.ts' \
   --include='*.json' --include='*.html' --include='*.yml' --include='*.yaml' \
   . 2>/dev/null | grep -v '^\./docs/' | grep -v '^\./scripts/check-no-contact\.sh:' || true)
