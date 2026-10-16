@@ -495,20 +495,21 @@ export function howBookingWorksPage() {
   </section>
   <section class="section two-col">
     <div>
-      <h2>What's different from the old site</h2>
+      <h2>What this build does</h2>
       <ul class="ticks">
-        <li>Prices are real per package, not one placeholder figure.</li>
+        <li>Real per-package starting price instead of a single placeholder figure.</li>
         <li>Ended offers are hidden automatically instead of being advertised.</li>
         <li>Bookings are stored, so they can be confirmed and tracked.</li>
         <li>WhatsApp is a single, optional entry point — not the checkout.</li>
+        <li>Accounts (register, log in, recover) work without any contact details.</li>
       </ul>
     </div>
     <div>
-      <h2>What this build does not do yet</h2>
+      <h2>Important notes</h2>
       <ul class="crosses">
-        <li>No card payment is taken. Where a paybill is configured, the booking page shows the official M-Pesa instructions.</li>
-        <li>No contact details are published (by design, this phase).</li>
-        <li>No live supplier availability — bookings are requests staff confirm.</li>
+        <li>Card payment is not taken in this build; official M-Pesa details are shown where configured.</li>
+        <li>No contact details are published on the site (by design).</li>
+        <li>Supplier availability is confirmed by the travel desk before booking finalisation.</li>
       </ul>
     </div>
   </section>`;
