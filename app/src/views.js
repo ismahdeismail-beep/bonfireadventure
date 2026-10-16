@@ -354,6 +354,7 @@ export function homePage({ packages, destinations, user }) {
       <div class="hero-actions">
         <a class="btn btn-primary btn-lg" href="/packages">Browse packages</a>
         <a class="btn btn-ghost btn-lg" href="/how-booking-works">How booking works</a>
+        <a class="btn btn-quiet btn-lg" href="https://www.youtube.com/watch?v=kYF9IefbVk4" rel="noopener noreferrer" target="_blank">▶ Watch our story</a>
       </div>
     </div>
     <div class="hero-stats">
