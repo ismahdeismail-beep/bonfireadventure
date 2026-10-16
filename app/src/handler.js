@@ -408,3 +408,5 @@ export async function handleRequest(req, res) {
     }
   }
 }
+
+export default handleRequest;
