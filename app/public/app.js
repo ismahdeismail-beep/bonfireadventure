@@ -10,6 +10,23 @@ function esc(s) {
 const form = document.querySelector('[data-quote-form]');
 const box = document.getElementById('quote');
 
+// "Booking for someone else" clears the name that was pre-filled from the
+// signed-in account, so a member can reserve for another person. Without JS the
+// field is simply editable, which already allows the same thing.
+const nameInput = document.querySelector('[data-prefilled-name]');
+const someoneElse = document.querySelector('[data-for-someone-else]');
+if (nameInput && someoneElse) {
+  const accountName = nameInput.value;
+  someoneElse.addEventListener('change', () => {
+    if (someoneElse.checked) {
+      nameInput.value = '';
+      nameInput.focus();
+    } else {
+      nameInput.value = accountName;
+    }
+  });
+}
+
 if (form && box) {
   const slug = box.dataset.slug;
 

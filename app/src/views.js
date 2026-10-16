@@ -132,6 +132,37 @@ function whatsappEntry(pkg, placement = 'package') {
   return `<p class="wa-entry"><a class="btn btn-quiet" rel="noopener noreferrer" href="${href}">Prefer to chat? Message the travel desk</a></p>`;
 }
 
+/**
+ * The lead traveller for a booking.
+ *
+ * When someone is signed in this is pre-filled from their account, so booking a
+ * package is a single step — no re-typing. The field stays editable, and the
+ * "booking for someone else" toggle clears it, so they can reserve on another
+ * person's behalf. Without JavaScript the field is still simply editable.
+ */
+function travellerField(user) {
+  if (user) {
+    return `<fieldset class="field">
+      <legend>Lead traveller</legend>
+      <label class="field"><span>Name for this booking</span>
+        <input type="text" name="travellerName" maxlength="80" required
+               value="${e(user.name)}" data-prefilled-name autocomplete="name"></label>
+      <label class="field checkbox">
+        <input type="checkbox" name="forSomeoneElse" value="1" data-for-someone-else>
+        <span>Booking for someone else</span>
+      </label>
+      <small class="muted">Pre-filled from your account (@${e(user.handle)}). Change the name to book for another person.</small>
+    </fieldset>`;
+  }
+  return `<fieldset class="field">
+    <legend>Lead traveller</legend>
+    <label class="field"><span>Name for this booking</span>
+      <input type="text" name="travellerName" maxlength="80" required
+             placeholder="Name for this booking" autocomplete="name"></label>
+    <small class="muted"><a href="/account/login">Log in</a> or <a href="/account/register">create an account</a> and this fills in automatically next time.</small>
+  </fieldset>`;
+}
+
 export function packageDetail({ pkg, destination, user }) {
   const from = priceFrom(pkg);
   const expired = isExpired(pkg);
@@ -157,8 +188,7 @@ export function packageDetail({ pkg, destination, user }) {
        </div>`
     : `<form class="booking-form" method="post" action="/packages/${e(pkg.slug)}/book" data-quote-form>
         <input type="hidden" name="csrf" value="${e(csrfToken)}">
-        ${user ? '' : `<label class="field"><span>Your name</span>
-          <input type="text" name="guestName" maxlength="80" required placeholder="Name for this booking"></label>`}
+        ${travellerField(user)}
         <fieldset class="field">
           <legend>Choose your option</legend>
           ${options}
@@ -413,6 +443,7 @@ export function bookingPage({ booking, pkg }) {
       <dl class="facts">
         <dt>Package</dt><dd>${e(booking.packageTitle)}</dd>
         <dt>Option</dt><dd>${e(booking.optionLabel)}</dd>
+        <dt>Lead traveller</dt><dd>${e(booking.travellerName || booking.guestName || '—')}${booking.forSelf ? ' <span class="muted">(account holder)</span>' : ''}</dd>
         <dt>Start date</dt><dd>${e(booking.startDate)}</dd>
         <dt>Travellers</dt><dd>${booking.travellers.adults} adult(s), ${booking.travellers.children} child(ren)</dd>
         ${booking.extras.length ? `<dt>Extras</dt><dd>${e(booking.extras.join(', '))}</dd>` : ''}
@@ -437,6 +468,7 @@ export function accountPage({ user, bookings }) {
     <tr>
       <td><a href="/bookings/${e(b.ref)}">${e(b.ref)}</a></td>
       <td>${e(b.packageTitle)}</td>
+      <td>${e(b.travellerName || b.guestName || '—')}${b.forSelf ? '' : ' <span class="muted small">(other)</span>'}</td>
       <td>${e(b.startDate)}</td>
       <td>${badge(b.status, b.status === 'confirmed' ? 'ok' : b.status === 'cancelled' || b.status === 'expired' ? 'danger' : 'warn')}</td>
       <td>${money(b.total, b.currency)}</td>
@@ -451,7 +483,7 @@ export function accountPage({ user, bookings }) {
   <section class="section">
     <h2>Your bookings</h2>
     ${bookings.length
-      ? `<table class="table"><thead><tr><th>Reference</th><th>Package</th><th>Start</th><th>Status</th><th>Total</th></tr></thead><tbody>${rows}</tbody></table>`
+      ? `<table class="table"><thead><tr><th>Reference</th><th>Package</th><th>Traveller</th><th>Start</th><th>Status</th><th>Total</th></tr></thead><tbody>${rows}</tbody></table>`
       : '<p class="empty">No bookings yet. <a href="/packages">Browse packages</a> to make your first one.</p>'}
   </section>
 
@@ -482,6 +514,7 @@ export function staffPage({ bookings }) {
     <tr>
       <td><a href="/bookings/${e(b.ref)}">${e(b.ref)}</a></td>
       <td>${e(b.packageTitle)}</td>
+      <td>${e(b.travellerName || b.guestName || '—')}</td>
       <td>${e(b.startDate)}</td>
       <td>${badge(b.status, b.status === 'confirmed' ? 'ok' : b.status === 'cancelled' || b.status === 'expired' ? 'danger' : 'warn')}</td>
       <td>${money(b.total, b.currency)}</td>
@@ -503,7 +536,7 @@ export function staffPage({ bookings }) {
   </header>
   <section class="section">
     ${bookings.length
-      ? `<table class="table"><thead><tr><th>Ref</th><th>Package</th><th>Start</th><th>Status</th><th>Total</th><th>Action</th></tr></thead><tbody>${rows}</tbody></table>`
+      ? `<table class="table"><thead><tr><th>Ref</th><th>Package</th><th>Traveller</th><th>Start</th><th>Status</th><th>Total</th><th>Action</th></tr></thead><tbody>${rows}</tbody></table>`
       : '<p class="empty">No bookings yet.</p>'}
   </section>`;
 }

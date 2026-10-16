@@ -51,6 +51,8 @@ node scripts/reset.js
 | Try this | What it shows |
 |---|---|
 | Open a package and change date/travellers/extras | Live price preview (`/api/quote`); the server re-prices on submit |
+| Sign in, then open any package | The lead traveller is **pre-filled from your account** — book in one step |
+| Tick "Booking for someone else" | The field clears so you can reserve on another person's behalf |
 | Submit the booking form | A stored reservation with a reference like `BF-XXXXX` and status `reserved` |
 | Create an account, then book | The booking appears under **Your account** |
 | Log in as staff (`ADMIN_HANDLE` / `ADMIN_PASSWORD`) → **Travel desk** | Confirm or cancel a reservation; the customer then sees the new status |

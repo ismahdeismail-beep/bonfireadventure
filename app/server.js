@@ -102,7 +102,10 @@ const routes = [
       adults: Number(form.adults),
       children: Number(form.children),
       extraIds: [].concat(form.extraIds || []),
-      guestName: form.guestName,
+      // Signed-in bookers get their account name by default; the field is
+      // editable so they can also book for someone else.
+      travellerName: String(form.travellerName || (user ? user.name : '')).trim(),
+      forSomeoneElse: form.forSomeoneElse === '1',
     }, user);
 
     if (!result.ok) {

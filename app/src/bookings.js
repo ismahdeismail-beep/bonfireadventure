@@ -32,10 +32,14 @@ export function bookingsForUser(userId) {
 }
 
 /** R3.10 — all validation is server-side. */
-export function validateBooking(pkg, { optionId, startDate, adults, children }) {
+export function validateBooking(pkg, { optionId, startDate, adults, children, travellerName }) {
   const errors = [];
   const option = findOption(pkg, optionId);
   if (!option) errors.push('Please choose a valid package option.');
+
+  const name = String(travellerName || '').trim();
+  if (name.length < 2) errors.push('Please enter the name for this booking.');
+  else if (name.length > 80) errors.push('That name is too long (80 characters maximum).');
 
   if (!/^\d{4}-\d{2}-\d{2}$/.test(String(startDate || ''))) {
     errors.push('Please choose a valid start date.');
@@ -75,7 +79,11 @@ export function createBooking(pkg, input, user) {
     id: `bk_${Math.random().toString(36).slice(2, 10)}`,
     ref: newRef(),
     userId: user ? user.id : null,
-    guestName: user ? null : String(input.guestName || 'Guest').slice(0, 80),
+    // The lead traveller for this booking. Pre-filled from the account when the
+    // booker is signed in, but stored on the booking itself so a member can also
+    // reserve on someone else's behalf.
+    travellerName: String(input.travellerName).trim().slice(0, 80),
+    forSelf: Boolean(user) && !input.forSomeoneElse,
     packageId: pkg.slug,
     packageTitle: pkg.title,
     optionId: input.optionId,
