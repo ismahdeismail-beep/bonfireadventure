@@ -380,6 +380,14 @@ export function homePage({ packages, destinations, user }) {
     <div class="dest-grid">${featured.map((d) => destinationCard(d, counts[d.slug] || 0)).join('')}</div>
   </section>
 
+  <section class="section">
+    <div class="section-head">
+      <h2>International destinations</h2>
+      <a href="/destinations">All destinations</a>
+    </div>
+    <div class="dest-grid">${destinations.filter((d) => d.region !== 'Kenya').slice(0, 8).map((d) => destinationCard(d, counts[d.slug] || 0)).join('')}</div>
+  </section>
+
   <section class="section booking-explainer">
     <h2>How booking works</h2>
     <ol class="steps">
