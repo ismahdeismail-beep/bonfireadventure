@@ -492,26 +492,6 @@ export function howBookingWorksPage() {
       <li><span class="step-n">3</span><h3>Reserve</h3><p>Submit the request. It is stored with a reference like <strong>BF-XXXXX</strong> and a status: reserved → confirmed, or cancelled/expired.</p></li>
       <li><span class="step-n">4</span><h3>Manage it</h3><p>Log in to see your bookings and their status. Accounts need only a handle and password — we are not collecting contact details in this phase.</p></li>
     </ol>
-  </section>
-  <section class="section two-col">
-    <div>
-      <h2>What this build does</h2>
-      <ul class="ticks">
-        <li>Real per-package starting price instead of a single placeholder figure.</li>
-        <li>Ended offers are hidden automatically instead of being advertised.</li>
-        <li>Bookings are stored, so they can be confirmed and tracked.</li>
-        <li>WhatsApp is a single, optional entry point — not the checkout.</li>
-        <li>Accounts (register, log in, recover) work without any contact details.</li>
-      </ul>
-    </div>
-    <div>
-      <h2>Important notes</h2>
-      <ul class="crosses">
-        <li>Card payment is not taken in this build; official M-Pesa details are shown where configured.</li>
-        <li>No contact details are published on the site (by design).</li>
-        <li>Supplier availability is confirmed by the travel desk before booking finalisation.</li>
-      </ul>
-    </div>
   </section>`;
 }
 
