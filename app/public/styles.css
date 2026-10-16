@@ -434,3 +434,12 @@ fieldset.field legend { padding: 0 .4rem; color: var(--ink-soft); font-size: .85
   }
   * { transition-duration: .001ms !important; }
 }
+
+/* ---------------------------------------------------------------- promise */
+
+.promise { background: #f4efe6; border-radius: 20px; padding: clamp(1.25rem, 3vw, 2rem); }
+.promise h2 { margin-bottom: .5rem; }
+.promise-stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 1rem; margin: 1.25rem 0 1.25rem; }
+.promise-stats div { background: var(--card); border: 1px solid var(--line); border-radius: var(--radius); padding: .9rem 1rem; }
+.promise-stats strong { display: block; font-family: var(--serif); font-size: 1.8rem; color: var(--accent); }
+.promise-stats span { font-size: .85rem; color: var(--ink-soft); }

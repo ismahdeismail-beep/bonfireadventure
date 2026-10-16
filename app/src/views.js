@@ -387,6 +387,20 @@ export function homePage({ packages, destinations, user }) {
     <div class="dest-grid">${destinations.filter((d) => d.region !== 'Kenya').slice(0, 8).map((d) => destinationCard(d, counts[d.slug] || 0)).join('')}</div>
   </section>
 
+  <section class="section promise">
+    <h2>Why travel with Bonfire</h2>
+    <p class="lede">For years we’ve helped travellers plan seamless coastal trips, safari experiences and international journeys with clarity and reliable support. Our focus is simple: structured planning, transparent pricing, dependable execution.</p>
+    <div class="promise-stats">
+      <div><strong>18+</strong><span>Years of travel experience</span></div>
+      <div><strong>70+</strong><span>Curated safari &amp; beach packages</span></div>
+      <div><strong>500K+</strong><span>Happy travellers</span></div>
+      <div><strong>100%</strong><span>Transparent pricing</span></div>
+      <div><strong>24/7</strong><span>Travel support</span></div>
+      <div><strong>60+</strong><span>Hotel partners</span></div>
+    </div>
+    <a class="btn btn-primary" href="/about-us">About us</a>
+  </section>
+
   <section class="section booking-explainer">
     <h2>How booking works</h2>
     <ol class="steps">
