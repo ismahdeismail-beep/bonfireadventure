@@ -8,6 +8,14 @@ import {
 import { hashPassword, verifyPassword, randomToken } from './password.js';
 import { parseCookies } from './http.js';
 
+// Never carry the scrypt hash past the verify step.
+function stripSecrets(user) {
+  if (!user) return null;
+  const out = { ...user };
+  delete out.passwordHash;
+  return out;
+}
+
 const COOKIE = 'bf_sid';
 const LOGIN_WINDOW_MS = 15 * 60 * 1000;
 const LOGIN_MAX_FAILURES = 5;
@@ -82,7 +90,8 @@ export async function ensureSession(req, res) {
 export async function context(req, res) {
   if (req._bfContext) return req._bfContext;
   const session = await ensureSession(req, res);
-  const user = session.userId ? await getUserById(session.userId) : null;
+  const raw = session.userId ? await getUserById(session.userId) : null;
+  const user = raw ? stripSecrets(raw) : null;
   req._bfContext = { session, user };
   return req._bfContext;
 }
@@ -133,7 +142,7 @@ export async function registerUser({ handle, name, password, consent }) {
       createdAt: now,
       updatedAt: now,
     });
-    return { ok: true, user };
+    return { ok: true, user: stripSecrets(user) };
   } catch (error) {
     // Race between the existence check and the insert (unique violation).
     if (error.code === '23505' || error.status === 409) {
@@ -188,7 +197,7 @@ export async function attemptLogin(req, handle, password) {
     return { ok: false, error: 'Incorrect handle or password.' };
   }
   clearFailures(req, handle);
-  return { ok: true, user };
+  return { ok: true, user: stripSecrets(user) };
 }
 
 /* ------------------------------------------------------------ password reset */
