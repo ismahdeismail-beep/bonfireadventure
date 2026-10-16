@@ -95,11 +95,10 @@ export function layout({ title, user, flash, nav = true, body }) {
   <meta name="theme-color" content="#b3401f">
   <meta name="description" content="Bonfire Adventures — tours, safaris, beach and international holidays, with real pricing and online booking.">
   <title>${e(title)} · Bonfire Adventures</title>
-  <link rel="icon" type="image/webp" href="/favicon.webp" sizes="512x512">
+  <link rel="stylesheet" href="/styles.css?v=5443c20">
+  <link rel="icon" type="image/webp" href="/favicon.webp?v=1">
   <link rel="apple-touch-icon" href="/img/favicon-192.webp">
-  <link rel="manifest" href="/manifest.webmanifest">
-  <link rel="stylesheet" href="/styles.css">
-</head>
+  <link rel="manifest" href="/manifest.webmanifest"></head>
 <body>
   <a class="skip" href="#main">Skip to content</a>
   ${navHtml}
