@@ -389,19 +389,21 @@ fieldset.field legend { padding: 0 .4rem; color: var(--ink-soft); font-size: .85
 
 /* ------------------------------------------------------------------ mobile */
 
-@media (max-width: 860px) {
-  .hero, .detail-grid, .two-col { grid-template-columns: 1fr; }
-  .hero.has-photo { min-height: 360px; }
-  .detail-aside { position: static; }
-  .hero-stats { justify-content: flex-start; }
-  .booking-row { flex-direction: column; align-items: flex-start; }
-  .booking-row-side { align-items: flex-start; text-align: left; }
-  .table-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; }
-  .filters { gap: .6rem; }
-  .filters .field, .filters .field.checkbox { flex: 1 1 calc(50% - .6rem); min-width: 140px; }
-  .nav-account .btn-primary { width: 100%; text-align: center; }
-  .hero-actions .btn { flex: 1 1 0; text-align: center; }
+@media (max-width: 600px) {
+  .page { padding: 1rem 1rem 3rem; }
+  .grid, .dest-grid { grid-template-columns: 1fr; }
+  .hero-stats { flex-direction: column; gap: .5rem; align-items: flex-start; }
+  .hero has-photo { min-height: 300px; }
+  .card-media { min-height: 150px; }
+  .btn { width: 100%; max-width: 280px; text-align: center; }
+  .filters > * { flex: 1 1 100%; }
+  .filters { flex-direction: column; align-items: stretch; }
+  .detail-grid, .two-col { gap: 1.5rem; }
+  .profile-head-actions, .hero-actions { flex-direction: column; }
+  .promise-stats { grid-template-columns: 1fr 1fr; }
 }
+@media (prefers-reduced-motion: reduce) {
+  .scroll-strip-track { animation: none; }}
 
 @keyframes kenburns {
   0%   { transform: scale(1)    translate(0, 0); }
