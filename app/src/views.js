@@ -36,11 +36,16 @@ export function photoForDestination(dest) {
  * two packages going to the same place still look different — and each package
  * always shows the same photo.
  */
-export function photoForPackage(pkg) {
+export function photoForPackage(pkg, renderIndex = null) {
   const dest = destinationBySlug(pkg.destination);
   const photos = (dest && dest.photos) || [];
   if (!photos.length) return null;
-  return photos[hashSlug(pkg.slug) % photos.length];
+  if (renderIndex !== null && Number.isFinite(renderIndex)) {
+    return photos[(renderIndex * 37) % photos.length] === undefined
+      ? photos[renderIndex % photos.length]
+      : photos[renderIndex % photos.length];
+  }
+  return photos[Math.abs(hashSlug(pkg.slug)) % photos.length];
 }
 
 function mediaImage(src, alt, width = 1000, height = 667) {
@@ -63,8 +68,7 @@ export function layout({ title, user, flash, nav = true, body }) {
   const navHtml = nav
     ? `<header class="site-header">
         <a class="brand" href="/">
-          <span class="brand-mark">BA</span>
-          <span class="brand-name">Bonfire Adventures</span>
+          <img src="/img/bonfire-logo.png" alt="Bonfire Adventures" class="brand-logo">
         </a>
         <nav class="site-nav">
           ${NAV.map(([href, label]) => `<a href="${href}">${e(label)}</a>`).join('')}
@@ -88,9 +92,12 @@ export function layout({ title, user, flash, nav = true, body }) {
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#b3401f">
+  <meta name="description" content="Bonfire Adventures — tours, safaris, beach and international holidays, with real pricing and online booking.">
   <title>${e(title)} · Bonfire Adventures</title>
   <link rel="icon" type="image/webp" href="/favicon.webp" sizes="512x512">
   <link rel="apple-touch-icon" href="/img/favicon-192.webp">
+  <link rel="manifest" href="/manifest.webmanifest">
   <link rel="stylesheet" href="/styles.css">
 </head>
 <body>
@@ -130,11 +137,11 @@ function money(amount, currency) {
   return formatMoney(amount, currency);
 }
 
-export function packageCard(pkg) {
+export function packageCard(pkg, renderIndex = null) {
   const from = priceFrom(pkg);
   const expired = isExpired(pkg);
   const dest = destinationBySlug(pkg.destination);
-  const photo = photoForPackage(pkg);
+  const photo = photoForPackage(pkg, renderIndex);
   return `<article class="card ${expired ? 'card-expired' : ''}">
     <a class="card-media ${TONE_CLASS[dest?.tone] || 'tone-mixed'}${photo ? ' has-photo' : ''}" href="/packages/${e(pkg.slug)}">
       ${mediaImage(photo, dest ? `${dest.name} photography` : pkg.title)}
@@ -272,6 +279,7 @@ export function packageDetail({ pkg, destination, user }) {
           <label class="field"><span>Adults</span><input type="number" name="adults" min="1" max="12" value="2" required></label>
           <label class="field"><span>Children</span><input type="number" name="children" min="0" max="10" value="0" required></label>
         </div>
+        <p class="muted small">Traveller counts only — we do not collect ages, dates of birth, passport or ID details in this phase.</p>
         <div class="quote" id="quote" data-slug="${e(pkg.slug)}">
           <h3>Your price</h3>
           <p class="muted">Fill in the form to see an exact price. Nothing is charged in this build.</p>
@@ -363,7 +371,7 @@ export function homePage({ packages, destinations, user }) {
       <h2>Featured packages</h2>
       <a href="/packages">See all ${packages.length}</a>
     </div>
-    <div class="grid">${bookable.map(packageCard).join('')}</div>
+    <div class="grid">${bookable.map((p, i) => packageCard(p, i)).join('')}</div>
   </section>
 
   <section class="section">
@@ -419,7 +427,7 @@ export function packagesPage({ packages, destinations, filters, user }) {
   </form>
 
   <p class="result-count">${shown.length} package${shown.length === 1 ? '' : 's'}</p>
-  <div class="grid">${shown.map(packageCard).join('') || '<p class="empty">No packages match those filters.</p>'}</div>`;
+  <div class="grid">${shown.map((p, i) => packageCard(p, i)).join('') || '<p class="empty">No packages match those filters.</p>'}</div>`;
 }
 
 export function destinationsPage({ destinations, packages }) {
@@ -451,7 +459,7 @@ export function destinationDetail({ destination, packages }) {
   </header>
   <section class="section">
     <h2>Packages to ${e(destination.name)}</h2>
-    <div class="grid">${packages.map(packageCard).join('') || '<p class="empty">No packages here yet.</p>'}</div>
+    <div class="grid">${packages.map((p, i) => packageCard(p, i)).join('') || '<p class="empty">No packages here yet.</p>'}</div>
   </section>`;
 }
 
@@ -465,11 +473,11 @@ export function offersPage({ packages }) {
   </header>
   <section class="section">
     <h2>Available now</h2>
-    <div class="grid">${live.map(packageCard).join('') || '<p class="empty">No live offers right now.</p>'}</div>
+    <div class="grid">${live.map((p, i) => packageCard(p, i)).join('') || '<p class="empty">No live offers right now.</p>'}</div>
   </section>
   ${ended.length ? `<section class="section">
     <h2>Ended</h2>
-    <div class="grid">${ended.map(packageCard).join('')}</div>
+    <div class="grid">${ended.map((p, i) => packageCard(p, i)).join('')}</div>
   </section>` : ''}`;
 }
 

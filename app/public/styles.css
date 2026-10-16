@@ -64,6 +64,7 @@ a { color: var(--accent); }
   font-family: var(--serif); font-weight: 700;
 }
 .brand-name { font-family: var(--serif); font-weight: 600; font-size: 1.05rem; }
+.brand-logo { height: 2.2rem; width: auto; display: block; }
 .site-nav { display: flex; gap: 1.1rem; flex-wrap: wrap; }
 .site-nav a { color: var(--ink-soft); text-decoration: none; font-size: .95rem; }
 .site-nav a:hover { color: var(--ink); text-decoration: underline; }
@@ -401,8 +402,34 @@ fieldset.field legend { padding: 0 .4rem; color: var(--ink-soft); font-size: .85
   .hero-actions .btn { flex: 1 1 0; text-align: center; }
 }
 
+@keyframes kenburns {
+  0%   { transform: scale(1)    translate(0, 0); }
+  50%  { transform: scale(1.12) translate(-1.5%, -1%); }
+  100% { transform: scale(1.06) translate(1%, .5%); }
+}
+
+.card-media.has-photo img,
+.dest-card.has-photo img,
+.hero.has-photo img,
+.detail-head.has-photo img,
+.confirm.has-photo img {
+  animation: kenburns 22s ease-in-out infinite alternate;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .card:hover .card-media img,
+  .dest-card:hover img { transform: scale(1.14); animation-play-state: paused; }
+}
+
 @media (prefers-reduced-motion: reduce) {
-  * { transition-duration: .001ms !important; }
   .card:hover, .dest-card:hover, .booking-row:hover { transform: none; }
-  .card:hover .card-media img, .dest-card:hover img { transform: none; }
+  .card-media.has-photo img,
+  .dest-card.has-photo img,
+  .hero.has-photo img,
+  .detail-head.has-photo img,
+  .confirm.has-photo img {
+    animation: none !important;
+    transform: none !important;
+  }
+  * { transition-duration: .001ms !important; }
 }

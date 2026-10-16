@@ -50,6 +50,7 @@ export function send(res, status, body, headers = {}) {
   res.writeHead(status, {
     'Content-Type': 'text/plain; charset=utf-8',
     ...securityHeaders(),
+    'Cache-Control': 'no-store, no-cache, must-revalidate, max-age=0, private',
     ...headers,
   });
   res.end(body);

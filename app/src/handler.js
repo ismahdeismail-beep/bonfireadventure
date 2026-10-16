@@ -83,6 +83,7 @@ const routes = [
   ['GET', '/app.js', (req, res) => serveStatic(res, 'app.js', 'text/javascript; charset=utf-8')],
 
   ['GET', '/favicon.webp', (req, res) => serveStatic(res, 'favicon.webp', 'image/webp')],
+  ['GET', '/manifest.webmanifest', (req, res) => serveStatic(res, 'manifest.webmanifest', 'application/manifest+json')],
   ['GET', '/img/:file', (req, res, params) => {
     const dir = path.join(config.publicDir, 'img');
     const full = path.join(dir, params.file);

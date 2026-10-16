@@ -43,13 +43,13 @@ export const config = {
   whatsappNumber: (process.env.WHATSAPP_NUMBER || '').trim(),
   whatsappPlacement: process.env.WHATSAPP_PLACEMENT || 'package-only',
 
-  // Payments (ADR-0006) — the panel only renders when a paybill is configured,
-  // and the values come from the environment, never from the repo.
+  // Payments (ADR-0006). Values default to the client's current paybill so a
+  // fresh deployment surfaces it; override by setting the env vars in the host.
   payEnabled: (process.env.PAYMENTS_ENABLED || 'true').trim().toLowerCase() !== 'false',
-  payName: (process.env.PAY_NAME || '').trim(),
+  payName: (process.env.PAY_NAME || 'Bonfire Adventures').trim(),
   payProvider: (process.env.PAY_PROVIDER || 'M-Pesa').trim(),
-  payPaybill: (process.env.PAY_PAYBILL || '').trim(),
-  payAccount: (process.env.PAY_ACCOUNT || '').trim(),
+  payPaybill: (process.env.PAY_PAYBILL || '714777').trim(),
+  payAccount: (process.env.PAY_ACCOUNT || '0759398975').trim(),
   payAccountLabel: (process.env.PAY_ACCOUNT_LABEL || 'Account number').trim(),
 
   // Requirement 3
