@@ -1,0 +1,14 @@
+{
+  "name": "bonfire-adventure",
+  "version": "0.2.0",
+  "private": true,
+  "description": "Bonfire Adventures rebuild — package browsing, booking and accounts.",
+  "main": "app/server.js",
+  "scripts": {
+    "start": "node app/server.js",
+    "reset": "node app/scripts/reset.js"
+  },
+  "engines": {
+    "node": ">=20.0.0"
+  }
+}

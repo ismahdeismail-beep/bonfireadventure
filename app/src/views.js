@@ -89,6 +89,8 @@ export function layout({ title, user, flash, nav = true, body }) {
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>${e(title)} · Bonfire Adventures</title>
+  <link rel="icon" type="image/webp" href="/favicon.webp" sizes="512x512">
+  <link rel="apple-touch-icon" href="/img/favicon-192.webp">
   <link rel="stylesheet" href="/styles.css">
 </head>
 <body>
@@ -682,7 +684,7 @@ export function staffPage({ bookings }) {
   </header>
   <section class="section">
     ${bookings.length
-      ? `<table class="table"><thead><tr><th>Ref</th><th>Package</th><th>Traveller</th><th>Start</th><th>Status</th><th>Total</th><th>Action</th></tr></thead><tbody>${rows}</tbody></table>`
+      ? `<div class="table-wrap"><table class="table"><thead><tr><th>Ref</th><th>Package</th><th>Traveller</th><th>Start</th><th>Status</th><th>Total</th><th>Action</th></tr></thead><tbody>${rows}</tbody></table></div>`
       : '<p class="empty">No bookings yet.</p>'}
   </section>`;
 }

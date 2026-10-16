@@ -383,6 +383,8 @@ fieldset.field legend { padding: 0 .4rem; color: var(--ink-soft); font-size: .85
 .footer-note { margin: 0; font-size: .85rem; max-width: 60ch; }
 .footer-nav { display: flex; gap: 1rem; flex-wrap: wrap; }
 
+.table-wrap { display: block; }
+
 /* ------------------------------------------------------------------ mobile */
 
 @media (max-width: 860px) {
@@ -392,6 +394,11 @@ fieldset.field legend { padding: 0 .4rem; color: var(--ink-soft); font-size: .85
   .hero-stats { justify-content: flex-start; }
   .booking-row { flex-direction: column; align-items: flex-start; }
   .booking-row-side { align-items: flex-start; text-align: left; }
+  .table-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+  .filters { gap: .6rem; }
+  .filters .field, .filters .field.checkbox { flex: 1 1 calc(50% - .6rem); min-width: 140px; }
+  .nav-account .btn-primary { width: 100%; text-align: center; }
+  .hero-actions .btn { flex: 1 1 0; text-align: center; }
 }
 
 @media (prefers-reduced-motion: reduce) {
