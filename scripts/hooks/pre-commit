@@ -1,0 +1,4 @@
+#!/usr/bin/env sh
+# Committed pre-commit hook enforcing ADR-0001 (no contact values).
+# Install with:  cp scripts/hooks/pre-commit .git/hooks/pre-commit && chmod +x .git/hooks/pre-commit
+exec bash "$(git rev-parse --show-toplevel)/scripts/check-no-contact.sh"

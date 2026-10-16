@@ -1,0 +1,18 @@
+# Raw site captures contain contact details and must never be committed.
+# They are stored outside the repo; see evidence/README.md
+captures/
+*.html
+!evidence/**/*.md
+
+# Local environment / secrets
+.env
+.env.*
+*.pem
+*.key
+
+# Editor / OS
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+*.swp
