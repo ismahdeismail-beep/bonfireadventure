@@ -108,14 +108,12 @@ export function layout({ title, user, flash, nav = true, body }) {
     ${body}
   </main>
   <footer class="site-footer">
-    <p class="footer-note">
-      Prototype build · Phase 1 — no contact surfaces are published
-      (see <code>docs/decisions/0001</code>). Booking and accounts are live in this build.
-    </p>
+    <p class="footer-note">© Bonfire Adventures — curated travel worldwide.</p>
     <nav class="footer-nav">
       <a href="/how-booking-works">How booking works</a>
       <a href="/packages">All packages</a>
       <a href="/offers">Current offers</a>
+      <a href="/destinations">Destinations</a>
     </nav>
   </footer>
   <script src="/app.js" defer></script>
