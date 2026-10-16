@@ -474,3 +474,20 @@ html { scroll-behavior: smooth; }
 }
 .btn:active { transform: scale(.97); }
 .site-header { backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px); }
+
+.mobile-bar { display: none; }
+@media (max-width: 860px) {
+  .mobile-bar {
+    position: fixed; left: 0; right: 0; bottom: 0; z-index: 30;
+    display: grid; grid-template-columns: repeat(4, 1fr); gap: .25rem;
+    padding: .4rem .5rem calc(.4rem + env(safe-area-inset-bottom, 0px));
+    background: var(--card); border-top: 1px solid var(--line);
+    backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px);
+  }
+  .mobile-bar-btn { display: flex; flex-direction: column; align-items: center; justify-content: center;
+    padding: .4rem .2rem; border-radius: 8px; text-decoration: none; font-size: .72rem; color: var(--ink-soft);
+    background: none; border: 0; }
+  .mobile-bar-btn span { line-height: 1; }
+  .mobile-bar-btn.is-active, .mobile-bar-btn:hover { color: var(--accent); background: var(--accent-tint); }
+  main.page { padding-bottom: clamp(1.25rem, 4vw, 2.5rem); }
+}

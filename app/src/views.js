@@ -122,6 +122,12 @@ export function layout({ title, user, flash, nav = true, currentPath, body }) {
       <a href="/destinations">Destinations</a>
     </nav>
   </footer>
+  <nav class="mobile-bar" aria-label="Quick actions">
+    <a href="/" class="mobile-bar-btn${currentPath === '/' ? ' is-active' : ''}"><span>Home</span></a>
+    <a href="/packages" class="mobile-bar-btn${currentPath === '/packages' ? ' is-active' : ''}"><span>Packages</span></a>
+    <a href="/destinations" class="mobile-bar-btn${currentPath === '/destinations' ? ' is-active' : ''}"><span>Places</span></a>
+    <a href="/account" class="mobile-bar-btn${currentPath.startsWith('/account') ? ' is-active' : ''}"><span>Account</span></a>
+  </nav>
   <script src="/app.js" defer></script>
 </body>
 </html>`;
