@@ -1,7 +1,9 @@
 import { config } from './config.js';
 
 export function currencySymbol(currency) {
-  return currency === 'USD' ? '$' : 'KSh ';
+  if (currency === 'USD') return '$';
+  if (currency === 'EUR') return '€';
+  return 'KSh ';
 }
 
 export function formatMoney(amount, currency) {
