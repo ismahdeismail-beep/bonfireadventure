@@ -43,6 +43,15 @@ export const config = {
   whatsappNumber: (process.env.WHATSAPP_NUMBER || '').trim(),
   whatsappPlacement: process.env.WHATSAPP_PLACEMENT || 'package-only',
 
+  // Payments (ADR-0006) — the panel only renders when a paybill is configured,
+  // and the values come from the environment, never from the repo.
+  payEnabled: (process.env.PAYMENTS_ENABLED || 'true').trim().toLowerCase() !== 'false',
+  payName: (process.env.PAY_NAME || '').trim(),
+  payProvider: (process.env.PAY_PROVIDER || 'M-Pesa').trim(),
+  payPaybill: (process.env.PAY_PAYBILL || '').trim(),
+  payAccount: (process.env.PAY_ACCOUNT || '').trim(),
+  payAccountLabel: (process.env.PAY_ACCOUNT_LABEL || 'Account number').trim(),
+
   // Requirement 3
   childRate: Number(process.env.CHILD_RATE || 0.7),
   depositRate: Number(process.env.DEPOSIT_RATE || 0.2),
@@ -62,3 +71,7 @@ if (!['supabase', 'json'].includes(config.storeDriver)) {
 if (config.storeDriver === 'supabase' && !config.supabaseReady) {
   throw new Error('STORE=supabase requires SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY.');
 }
+
+// The payment panel is only meaningful when a paybill has been supplied, so the
+// repo ships with it invisible (ADR-0006).
+config.payReady = config.payEnabled && Boolean(config.payPaybill);

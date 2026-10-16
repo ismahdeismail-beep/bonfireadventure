@@ -95,6 +95,14 @@ export async function deleteSessionsForUser(userId) {
   persist();
 }
 
+/** Sign out every other device after a password change, keeping the current one. */
+export async function deleteSessionsForUserExcept(userId, keepId) {
+  if (!userId) return;
+  const s = load();
+  s.sessions = s.sessions.filter((x) => x.userId !== userId || x.id === keepId);
+  persist();
+}
+
 export async function pruneSessions(nowMs = Date.now()) {
   const s = load();
   s.sessions = s.sessions.filter((x) => x.expiresAt >= nowMs);

@@ -1,6 +1,7 @@
 import { config } from './config.js';
 import {
   getSession as readSession, insertSession, deleteSession, deleteSessionsForUser,
+  deleteSessionsForUserExcept,
   getUserById, getUserByHandle, insertUser, updateUser, newId,
   insertResetToken, getResetToken, markResetTokenUsed, pruneSessions,
 } from './db.js';
@@ -215,4 +216,25 @@ export async function consumeResetToken(token, newPassword) {
   await markResetTokenUsed(token);      // single-use
   await deleteSessionsForUser(user.id); // invalidate every existing session
   return { ok: true, user: { ...user, passwordHash: undefined } };
+}
+
+/**
+ * Change the password of the signed-in user. Unlike the reset flow this keeps
+ * the current session alive and only signs out *other* devices.
+ */
+export async function changeOwnPassword(userId, currentPassword, newPassword, keepSessionId) {
+  const user = await getUserById(userId);
+  if (!user) return { ok: false, error: 'Account not found.' };
+  if (!verifyPassword(currentPassword, user.passwordHash)) {
+    return { ok: false, error: 'Your current password is not correct.' };
+  }
+  if (!validatePassword(newPassword)) {
+    return { ok: false, error: 'New password must be at least 10 characters.' };
+  }
+  if (verifyPassword(newPassword, user.passwordHash)) {
+    return { ok: false, error: 'Please choose a password you have not used here before.' };
+  }
+  await updateUser(userId, { passwordHash: hashPassword(newPassword) });
+  await deleteSessionsForUserExcept(userId, keepSessionId);
+  return { ok: true };
 }

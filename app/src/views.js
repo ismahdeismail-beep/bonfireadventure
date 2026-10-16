@@ -11,6 +11,44 @@ const TONE_CLASS = {
   seasonal: 'tone-seasonal',
 };
 
+/* -------------------------------------------------------------------- imagery */
+
+/**
+ * Photography ships with the build (ADR-0006). The CSP is `img-src 'self'`, so
+ * every photo is served from /img — nothing is hotlinked. Destinations that have
+ * no photo keep their tone gradient, so a missing image never breaks the layout.
+ */
+function hashSlug(text) {
+  let h = 2166136261;
+  for (let i = 0; i < text.length; i += 1) {
+    h ^= text.charCodeAt(i);
+    h = Math.imul(h, 16777619);
+  }
+  return Math.abs(h);
+}
+
+export function photoForDestination(dest) {
+  return (dest && dest.photos && dest.photos[0]) || null;
+}
+
+/**
+ * Packages share their destination's photo pool. The slug picks the frame, so
+ * two packages going to the same place still look different — and each package
+ * always shows the same photo.
+ */
+export function photoForPackage(pkg) {
+  const dest = destinationBySlug(pkg.destination);
+  const photos = (dest && dest.photos) || [];
+  if (!photos.length) return null;
+  return photos[hashSlug(pkg.slug) % photos.length];
+}
+
+function mediaImage(src, alt, width = 1000, height = 667) {
+  if (!src) return '';
+  return `<img src="${e(src)}" alt="${e(alt || '')}" width="${width}" height="${height}" loading="lazy" decoding="async">`;
+}
+
+
 /* ------------------------------------------------------------------- layout */
 
 const NAV = [
@@ -94,9 +132,11 @@ export function packageCard(pkg) {
   const from = priceFrom(pkg);
   const expired = isExpired(pkg);
   const dest = destinationBySlug(pkg.destination);
+  const photo = photoForPackage(pkg);
   return `<article class="card ${expired ? 'card-expired' : ''}">
-    <a class="card-media ${TONE_CLASS[dest?.tone] || 'tone-mixed'}" href="/packages/${e(pkg.slug)}">
-      <span>${e(dest?.name || 'Journey')}</span>
+    <a class="card-media ${TONE_CLASS[dest?.tone] || 'tone-mixed'}${photo ? ' has-photo' : ''}" href="/packages/${e(pkg.slug)}">
+      ${mediaImage(photo, dest ? `${dest.name} photography` : pkg.title)}
+      <span class="media-label">${e(dest?.name || 'Journey')}</span>
     </a>
     <div class="card-body">
       <div class="card-tags">
@@ -112,10 +152,14 @@ export function packageCard(pkg) {
 }
 
 export function destinationCard(dest, count) {
-  return `<a class="dest-card ${TONE_CLASS[dest.tone] || 'tone-mixed'}" href="/destinations/${e(dest.slug)}">
-    <span class="dest-region">${e(dest.region)}</span>
-    <span class="dest-name">${e(dest.name)}</span>
-    <span class="dest-count">${count} package${count === 1 ? '' : 's'}</span>
+  const photo = photoForDestination(dest);
+  return `<a class="dest-card ${TONE_CLASS[dest.tone] || 'tone-mixed'}${photo ? ' has-photo' : ''}" href="/destinations/${e(dest.slug)}">
+    ${mediaImage(photo, `${dest.name} photography`)}
+    <span class="dest-body">
+      <span class="dest-region">${e(dest.region)}</span>
+      <span class="dest-name">${e(dest.name)}</span>
+      <span class="dest-count">${count} package${count === 1 ? '' : 's'}</span>
+    </span>
   </a>`;
 }
 
@@ -130,6 +174,33 @@ function whatsappEntry(pkg, placement = 'package') {
   const text = encodeURIComponent(`I would like to ask about "${pkg.title}" (ref page: /packages/${pkg.slug}).`);
   const href = `https://wa.me/${encodeURIComponent(config.whatsappNumber)}?text=${text}`;
   return `<p class="wa-entry"><a class="btn btn-quiet" rel="noopener noreferrer" href="${href}">Prefer to chat? Message the travel desk</a></p>`;
+}
+
+/**
+ * Payments (ADR-0006). Renders only when a paybill has been configured in the
+ * environment — the repo itself never carries a paybill, account number or
+ * phone number. The instructions are provider-neutral apart from the name.
+ */
+function paymentPanel(booking) {
+  if (!config.payReady) return '';
+  const deposit = booking ? money(booking.deposit, booking.currency) : '';
+  const account = config.payAccount;
+  return `<section class="pay-box">
+    <h3>Pay by ${e(config.payProvider)}</h3>
+    <p class="muted small">${config.payName ? `${e(config.payName)} — o` : 'O'}fficial payment details. Pay the deposit to secure your reservation.</p>
+    <dl class="pay-facts">
+      <dt>Paybill</dt><dd><strong>${e(config.payPaybill)}</strong></dd>
+      <dt>${e(config.payAccountLabel)}</dt><dd><strong>${e(account || '—')}</strong></dd>
+      ${deposit ? `<dt>Deposit due</dt><dd><strong>${e(deposit)}</strong></dd>` : ''}
+    </dl>
+    <ol class="pay-steps">
+      <li>Open ${e(config.payProvider)} and choose <em>Lipa na ${e(config.payProvider)} → Pay Bill</em>.</li>
+      <li>Enter the paybill number above.</li>
+      <li>Enter the ${e(config.payAccountLabel.toLowerCase())} above.</li>
+      <li>Enter the amount and your PIN, then confirm.</li>
+      <li>Keep the confirmation message — it is your proof of payment.</li>
+    </ol>
+  </section>`;
 }
 
 /**
@@ -210,7 +281,8 @@ export function packageDetail({ pkg, destination, user }) {
   return `
   <nav class="crumbs"><a href="/packages">Packages</a> <span>/</span> <span>${e(pkg.title)}</span></nav>
   <article class="detail">
-    <header class="detail-head ${TONE_CLASS[destination?.tone] || 'tone-mixed'}">
+    <header class="detail-head ${TONE_CLASS[destination?.tone] || 'tone-mixed'}${photoForPackage(pkg) ? ' has-photo' : ''}">
+      ${mediaImage(photoForPackage(pkg), destination ? `${destination.name} photography` : pkg.title, 1800, 900)}
       <div class="detail-tags">
         ${badge(pkg.category, 'cat')}
         ${destination ? badge(destination.name, 'place') : ''}
@@ -263,9 +335,11 @@ export function homePage({ packages, destinations, user }) {
   const bookable = packages.filter((p) => !isExpired(p)).slice(0, 6);
   const featured = destinations.slice(0, 8);
   const counts = countByDestination(packages);
+  const heroPhoto = featured.map(photoForDestination).find(Boolean) || null;
 
   return `
-  <section class="hero">
+  <section class="hero${heroPhoto ? ' has-photo' : ''}">
+    ${mediaImage(heroPhoto, 'Bonfire Adventures destination photography', 1800, 900)}
     <div class="hero-text">
       <p class="eyebrow">Beach · Safari · International</p>
       <h1>We take you places. You make the memories.</h1>
@@ -364,11 +438,14 @@ export function destinationsPage({ destinations, packages }) {
 }
 
 export function destinationDetail({ destination, packages }) {
+  const photo = photoForDestination(destination);
   return `
   <nav class="crumbs"><a href="/destinations">Destinations</a> <span>/</span> <span>${e(destination.name)}</span></nav>
-  <header class="page-head">
+  <header class="detail-head ${TONE_CLASS[destination.tone] || 'tone-mixed'}${photo ? ' has-photo' : ''}">
+    ${mediaImage(photo, `${destination.name} photography`, 1800, 900)}
+    <div class="detail-tags">${badge(destination.region, 'place')}</div>
     <h1>${e(destination.name)}</h1>
-    <p class="lede">${e(destination.blurb)}</p>
+    <p class="detail-summary">${e(destination.blurb)}</p>
   </header>
   <section class="section">
     <h2>Packages to ${e(destination.name)}</h2>
@@ -421,7 +498,7 @@ export function howBookingWorksPage() {
     <div>
       <h2>What this build does not do yet</h2>
       <ul class="crosses">
-        <li>No payment is taken (the model supports it).</li>
+        <li>No card payment is taken. Where a paybill is configured, the booking page shows the official M-Pesa instructions.</li>
         <li>No contact details are published (by design, this phase).</li>
         <li>No live supplier availability — bookings are requests staff confirm.</li>
       </ul>
@@ -430,9 +507,12 @@ export function howBookingWorksPage() {
 }
 
 export function bookingPage({ booking, pkg }) {
-  const tone = pkg ? TONE_CLASS[destinationBySlug(pkg.destination)?.tone] || 'tone-mixed' : 'tone-mixed';
+  const dest = pkg ? destinationBySlug(pkg.destination) : null;
+  const tone = TONE_CLASS[dest?.tone] || 'tone-mixed';
+  const photo = photoForDestination(dest);
   return `
-  <section class="confirm ${tone}">
+  <section class="confirm ${tone}${photo ? ' has-photo' : ''}">
+    ${mediaImage(photo, dest ? `${dest.name} photography` : 'Bonfire Adventures', 1800, 900)}
     <p class="eyebrow">Reservation received</p>
     <h1>Booking ${e(booking.ref)}</h1>
     <p class="lede">Status: <strong>${e(booking.status)}</strong> · Payment: <strong>${e(booking.paymentStatus.replace('_', ' '))}</strong></p>
@@ -457,54 +537,120 @@ export function bookingPage({ booking, pkg }) {
         <li><span class="step-n">1</span><h3>We confirm availability</h3><p>A reservation starts as <em>reserved</em> and is confirmed by the travel desk.</p></li>
         <li><span class="step-n">2</span><h3>You track the status</h3><p>Keep this reference, or create an account to see it with your other bookings.</p></li>
       </ol>
+      ${paymentPanel(booking)}
       ${booking.userId ? '' : '<p class="muted small">This booking was made as a guest. Create an account with the same details to manage it.</p>'}
       <a class="btn btn-ghost" href="/packages">Browse more packages</a>
     </div>
   </section>`;
 }
 
+function bookingStatusKind(status) {
+  if (status === 'confirmed') return 'ok';
+  if (status === 'cancelled' || status === 'expired') return 'danger';
+  return 'warn';
+}
+
+function bookingStatusNote(b) {
+  if (b.status === 'confirmed') return 'Confirmed by the travel desk.';
+  if (b.status === 'cancelled') return 'This reservation was cancelled.';
+  if (b.status === 'expired') return 'This reservation expired before it was confirmed.';
+  return 'Awaiting confirmation from the travel desk.';
+}
+
+function bookingRow(b) {
+  const adults = `${b.travellers.adults} adult${b.travellers.adults === 1 ? '' : 's'}`;
+  const children = b.travellers.children
+    ? `, ${b.travellers.children} child${b.travellers.children === 1 ? '' : 'ren'}`
+    : '';
+  return `<a class="booking-row" href="/bookings/${e(b.ref)}">
+    <div class="booking-row-main">
+      <div class="booking-row-top">
+        ${badge(b.status, bookingStatusKind(b.status))}
+        <span class="booking-ref">${e(b.ref)}</span>
+      </div>
+      <h3>${e(b.packageTitle)}</h3>
+      <p class="muted small">${e(b.optionLabel)} · ${e(b.startDate)} · ${adults}${children}</p>
+      <p class="muted small">${e(bookingStatusNote(b))}</p>
+    </div>
+    <div class="booking-row-side">
+      <strong>${money(b.total, b.currency)}</strong>
+      <span class="muted small">${e(b.paymentStatus.replace('_', ' '))}</span>
+      ${b.forSelf ? '' : '<span class="muted small">Booked for someone else</span>'}
+    </div>
+  </a>`;
+}
+
+/**
+ * The account page is deliberately three things and nothing more: who you are,
+ * your bookings, and a single link to settings. Everything editable lives on
+ * /account/settings so this page stays scannable.
+ */
 export function accountPage({ user, bookings }) {
-  const rows = bookings.map((b) => `
-    <tr>
-      <td><a href="/bookings/${e(b.ref)}">${e(b.ref)}</a></td>
-      <td>${e(b.packageTitle)}</td>
-      <td>${e(b.travellerName || b.guestName || '—')}${b.forSelf ? '' : ' <span class="muted small">(other)</span>'}</td>
-      <td>${e(b.startDate)}</td>
-      <td>${badge(b.status, b.status === 'confirmed' ? 'ok' : b.status === 'cancelled' || b.status === 'expired' ? 'danger' : 'warn')}</td>
-      <td>${money(b.total, b.currency)}</td>
-    </tr>`).join('');
+  const active = bookings.filter((b) => b.status === 'reserved' || b.status === 'confirmed');
+  const closed = bookings.filter((b) => b.status === 'cancelled' || b.status === 'expired');
+  const initial = (user.name || user.handle || '?').trim().charAt(0).toUpperCase();
+  const since = user.createdAt
+    ? new Date(user.createdAt).toLocaleDateString('en-GB', { month: 'long', year: 'numeric' })
+    : '';
 
   return `
-  <header class="page-head">
-    <h1>Your account</h1>
-    <p class="lede">Signed in as <strong>${e(user.name)}</strong> (@${e(user.handle)})${user.role === 'staff' ? ' · travel desk' : ''}.</p>
-  </header>
-
-  <section class="section">
-    <h2>Your bookings</h2>
-    ${bookings.length
-      ? `<table class="table"><thead><tr><th>Reference</th><th>Package</th><th>Traveller</th><th>Start</th><th>Status</th><th>Total</th></tr></thead><tbody>${rows}</tbody></table>`
-      : '<p class="empty">No bookings yet. <a href="/packages">Browse packages</a> to make your first one.</p>'}
+  <section class="profile-head">
+    <span class="avatar" aria-hidden="true">${e(initial)}</span>
+    <div class="profile-head-text">
+      <h1>${e(user.name)}</h1>
+      <p class="muted">@${e(user.handle)}${user.role === 'staff' ? ' · travel desk' : ''}${since ? ` · member since ${e(since)}` : ''}</p>
+    </div>
+    <div class="profile-head-actions">
+      ${user.role === 'staff' ? '<a class="btn btn-ghost" href="/staff">Travel desk</a>' : ''}
+      <a class="btn btn-primary" href="/account/settings">Account settings</a>
+    </div>
   </section>
 
+  <section class="section">
+    <div class="section-head">
+      <h2>Your bookings</h2>
+      <span class="muted">${bookings.length} total</span>
+    </div>
+    ${bookings.length
+      ? `<div class="booking-list">
+          ${active.length ? active.map(bookingRow).join('') : '<p class="empty">No upcoming bookings — everything below has ended.</p>'}
+          ${closed.length ? `<h3 class="booking-subhead">Past &amp; cancelled</h3>${closed.map(bookingRow).join('')}` : ''}
+        </div>`
+      : `<div class="empty-state">
+          <h3>You have no bookings yet</h3>
+          <p class="muted">Reserve a package and it appears here with a reference you can track.</p>
+          <a class="btn btn-primary" href="/packages">Browse packages</a>
+        </div>`}
+  </section>`;
+}
+
+/** Everything editable, on one small page with two clear forms. */
+export function settingsPage({ user }) {
+  return `
+  <nav class="crumbs"><a href="/account">Your account</a> <span>/</span> <span>Settings</span></nav>
+  <header class="page-head">
+    <h1>Account settings</h1>
+    <p class="lede">Change how your name appears on bookings, or set a new password.</p>
+  </header>
   <section class="section two-col">
-    <div>
-      <h2>Profile</h2>
-      <form method="post" action="/account/profile" class="stack">
+    <div class="panel">
+      <h2>Your details</h2>
+      <form method="post" action="/account/settings/name" class="stack">
         <input type="hidden" name="csrf" value="${e(csrfToken)}">
-        <label class="field"><span>Handle</span><input type="text" value="${e(user.handle)}" disabled></label>
         <label class="field"><span>Display name</span><input type="text" name="name" value="${e(user.name)}" maxlength="80" required></label>
-        <button class="btn btn-primary" type="submit">Save changes</button>
+        <label class="field"><span>Handle</span><input type="text" value="@${e(user.handle)}" disabled><small class="muted">Your handle is how you log in, and cannot be changed here.</small></label>
+        <button class="btn btn-primary" type="submit">Save name</button>
       </form>
     </div>
-    <div>
+    <div class="panel">
       <h2>Password</h2>
-      <form method="post" action="/account/password" class="stack">
+      <form method="post" action="/account/settings/password" class="stack">
         <input type="hidden" name="csrf" value="${e(csrfToken)}">
-        <label class="field"><span>Current handle (to request a reset)</span><input type="text" value="${e(user.handle)}" disabled></label>
-        <p class="muted small">Password resets are single-use and expire after 30 minutes. In this build the reset link is shown on screen instead of being emailed.</p>
-        <button class="btn btn-ghost" type="submit">Request a password reset</button>
+        <label class="field"><span>Current password</span><input type="password" name="current" autocomplete="current-password" required></label>
+        <label class="field"><span>New password</span><input type="password" name="password" minlength="10" autocomplete="new-password" required><small class="muted">At least 10 characters.</small></label>
+        <button class="btn btn-primary" type="submit">Change password</button>
       </form>
+      <p class="muted small">Changing your password signs out your other devices. Forgotten it instead? <a href="/account/password">Request a reset link</a>.</p>
     </div>
   </section>`;
 }

@@ -23,7 +23,8 @@ export const {
   // users
   getUserById, getUserByHandle, insertUser, updateUser,
   // sessions
-  insertSession, getSession, deleteSession, deleteSessionsForUser, pruneSessions,
+  insertSession, getSession, deleteSession, deleteSessionsForUser,
+  deleteSessionsForUserExcept, pruneSessions,
   // password resets
   insertResetToken, getResetToken, markResetTokenUsed,
   // bookings

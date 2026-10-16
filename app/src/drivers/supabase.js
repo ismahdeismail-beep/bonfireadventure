@@ -188,6 +188,15 @@ export async function deleteSessionsForUser(userId) {
   await rest(`${SESSIONS}?user_id=eq.${enc(userId)}`, { method: 'DELETE', prefer: 'return=minimal' });
 }
 
+/** Sign out every other device after a password change, keeping the current one. */
+export async function deleteSessionsForUserExcept(userId, keepId) {
+  if (!userId) return;
+  await rest(`${SESSIONS}?user_id=eq.${enc(userId)}${keepId ? `&id=neq.${enc(keepId)}` : ''}`, {
+    method: 'DELETE',
+    prefer: 'return=minimal',
+  });
+}
+
 export async function pruneSessions(nowMs = Date.now()) {
   const cutoff = enc(new Date(nowMs).toISOString());
   await rest(`${SESSIONS}?expires_at=lt.${cutoff}`, { method: 'DELETE', prefer: 'return=minimal' });
