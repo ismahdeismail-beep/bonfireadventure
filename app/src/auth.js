@@ -1,7 +1,11 @@
 import { config } from './config.js';
-import { db, save } from './store.js';
+import {
+  getSession as readSession, insertSession, deleteSession, deleteSessionsForUser,
+  getUserById, getUserByHandle, insertUser, updateUser, newId,
+  insertResetToken, getResetToken, markResetTokenUsed, pruneSessions,
+} from './db.js';
 import { hashPassword, verifyPassword, randomToken } from './password.js';
-import { parseCookies, uid } from './http.js';
+import { parseCookies } from './http.js';
 
 const COOKIE = 'bf_sid';
 const LOGIN_WINDOW_MS = 15 * 60 * 1000;
@@ -20,40 +24,31 @@ function cookieHeader(sid, maxAgeSec) {
  * R4.8 — a brand-new session id is issued on every login (regenerate to prevent
  * session fixation).
  */
-export function createSession(res, userId) {
+export async function createSession(res, userId) {
   const sid = randomToken(32);
-  db.sessions[sid] = {
+  const now = Date.now();
+  await insertSession({
+    id: sid,
     userId,
     csrf: randomToken(16),
-    createdAt: Date.now(),
-    expiresAt: Date.now() + config.sessionTtlMs,
-  };
-  pruneSessions();
-  save();
+    createdAt: now,
+    expiresAt: now + config.sessionTtlMs,
+  });
+  await pruneSessions();
   res.setHeader('Set-Cookie', cookieHeader(sid, Math.floor(config.sessionTtlMs / 1000)));
   return sid;
 }
 
-export function destroySession(req, res) {
+export async function destroySession(req, res) {
   const sid = parseCookies(req)[COOKIE];
-  if (sid && db.sessions[sid]) {
-    delete db.sessions[sid];
-    save();
-  }
+  if (sid) await deleteSession(sid);
   res.setHeader('Set-Cookie', cookieHeader('', 0));
 }
 
-function pruneSessions() {
-  const now = Date.now();
-  for (const [sid, s] of Object.entries(db.sessions)) {
-    if (s.expiresAt < now) delete db.sessions[sid];
-  }
-}
-
-export function getSession(req) {
+export async function getSession(req) {
   const sid = parseCookies(req)[COOKIE];
   if (!sid) return null;
-  const session = db.sessions[sid];
+  const session = await readSession(sid);
   if (!session || session.expiresAt < Date.now()) return null;
   return { sid, session };
 }
@@ -62,42 +57,49 @@ export function getSession(req) {
  * Give every visitor (including anonymous ones) a session so forms can carry a
  * CSRF token. A subsequent login replaces the cookie with a fresh session id.
  */
-export function ensureSession(req, res) {
-  const found = getSession(req);
+export async function ensureSession(req, res) {
+  const found = await getSession(req);
   if (found) return found.session;
   const sid = randomToken(32);
-  db.sessions[sid] = {
+  const now = Date.now();
+  const session = {
+    id: sid,
     userId: null,
     csrf: randomToken(16),
-    createdAt: Date.now(),
-    expiresAt: Date.now() + config.sessionTtlMs,
+    createdAt: now,
+    expiresAt: now + config.sessionTtlMs,
   };
-  save();
+  await insertSession(session);
   res.setHeader('Set-Cookie', cookieHeader(sid, Math.floor(config.sessionTtlMs / 1000)));
-  return db.sessions[sid];
+  return session;
 }
 
-export function currentUser(req) {
-  const found = getSession(req);
-  if (!found) return null;
-  return db.users.find((u) => u.id === found.session.userId) || null;
+/**
+ * One lookup per request: resolves (and if needed creates) the session, then the
+ * signed-in user, memoised on `req` so downstream helpers do not re-query.
+ */
+export async function context(req, res) {
+  if (req._bfContext) return req._bfContext;
+  const session = await ensureSession(req, res);
+  const user = session.userId ? await getUserById(session.userId) : null;
+  req._bfContext = { session, user };
+  return req._bfContext;
 }
 
-export function csrfFor(req) {
-  const found = getSession(req);
-  return found?.session?.csrf || '';
+export function csrfFor(ctx) {
+  return ctx?.session?.csrf || '';
 }
 
-export function verifyCsrf(req, token) {
-  const found = getSession(req);
-  if (!found) return false;
-  return typeof token === 'string' && token.length > 0 && token === found.session.csrf;
+export function verifyCsrf(ctx, token) {
+  const expected = ctx?.session?.csrf;
+  if (!expected) return false;
+  return typeof token === 'string' && token.length > 0 && token === expected;
 }
 
 /* ---------------------------------------------------------------------- users */
 
-export function findUser(handle) {
-  return db.users.find((u) => u.handle === String(handle || '').toLowerCase()) || null;
+export async function findUser(handle) {
+  return getUserByHandle(handle);
 }
 
 export function validateHandle(handle) {
@@ -108,7 +110,7 @@ export function validatePassword(password) {
   return typeof password === 'string' && password.length >= 10;
 }
 
-export function registerUser({ handle, name, password, consent }) {
+export async function registerUser({ handle, name, password, consent }) {
   const h = String(handle || '').toLowerCase().trim();
   const errors = [];
   if (!validateHandle(h)) errors.push('Handle must be 3–32 characters: letters, numbers, dot, dash or underscore.');
@@ -116,20 +118,28 @@ export function registerUser({ handle, name, password, consent }) {
   if (!validatePassword(password)) errors.push('Password must be at least 10 characters.');
   if (!consent) errors.push('Please accept the data-use consent to create an account.');
   if (errors.length) return { ok: false, errors };
-  if (findUser(h)) return { ok: false, errors: ['That handle is already taken.'] };
+  if (await findUser(h)) return { ok: false, errors: ['That handle is already taken.'] };
 
-  const user = {
-    id: uid(8),
-    handle: h,
-    name: String(name).trim().slice(0, 80),
-    role: 'customer',
-    passwordHash: hashPassword(password),
-    consentAt: new Date().toISOString(),
-    createdAt: new Date().toISOString(),
-  };
-  db.users.push(user);
-  save();
-  return { ok: true, user };
+  const now = new Date().toISOString();
+  try {
+    const user = await insertUser({
+      id: newId(),
+      handle: h,
+      name: String(name).trim().slice(0, 80),
+      role: 'customer',
+      passwordHash: hashPassword(password),
+      consentAt: now,
+      createdAt: now,
+      updatedAt: now,
+    });
+    return { ok: true, user };
+  } catch (error) {
+    // Race between the existence check and the insert (unique violation).
+    if (error.code === '23505' || error.status === 409) {
+      return { ok: false, errors: ['That handle is already taken.'] };
+    }
+    throw error;
+  }
 }
 
 /* --------------------------------------------------------------- login limits */
@@ -166,11 +176,11 @@ function clearFailures(req, handle) {
 /**
  * R4.6 (brute-force throttling) + R4.11 (no account-existence leakage).
  */
-export function attemptLogin(req, handle, password) {
+export async function attemptLogin(req, handle, password) {
   if (isRateLimited(req, handle)) {
     return { ok: false, error: 'Too many attempts. Please try again shortly.' };
   }
-  const user = findUser(handle);
+  const user = await findUser(handle);
   const valid = user ? verifyPassword(password, user.passwordHash) : false;
   if (!valid) {
     recordFailure(req, handle);
@@ -182,34 +192,27 @@ export function attemptLogin(req, handle, password) {
 
 /* ------------------------------------------------------------ password reset */
 
-export function createResetToken(handle) {
-  const user = findUser(handle);
+export async function createResetToken(handle) {
+  const user = await findUser(handle);
   if (!user) return { ok: true, token: null }; // do not reveal existence (R4.11)
   const token = randomToken(24);
-  db.resetTokens[token] = {
-    userId: user.id,
-    expiresAt: Date.now() + config.resetTtlMs,
-    used: false,
-  };
-  save();
+  const expiresAt = Date.now() + config.resetTtlMs;
+  await insertResetToken({ token, userId: user.id, expiresAt });
   return { ok: true, token };
 }
 
-export function consumeResetToken(token, newPassword) {
-  const rec = db.resetTokens[token];
+export async function consumeResetToken(token, newPassword) {
+  const rec = await getResetToken(token);
   if (!rec) return { ok: false, error: 'This reset link is invalid.' };
   if (rec.used) return { ok: false, error: 'This reset link has already been used.' };
   if (rec.expiresAt < Date.now()) return { ok: false, error: 'This reset link has expired.' };
   if (!validatePassword(newPassword)) return { ok: false, error: 'Password must be at least 10 characters.' };
 
-  const user = db.users.find((u) => u.id === rec.userId);
+  const user = await getUserById(rec.userId);
   if (!user) return { ok: false, error: 'Account not found.' };
-  user.passwordHash = hashPassword(newPassword);
-  rec.used = true; // single-use
-  // Invalidate all existing sessions for this user.
-  for (const [sid, s] of Object.entries(db.sessions)) {
-    if (s.userId === user.id) delete db.sessions[sid];
-  }
-  save();
-  return { ok: true, user };
+
+  await updateUser(user.id, { passwordHash: hashPassword(newPassword) });
+  await markResetTokenUsed(token);      // single-use
+  await deleteSessionsForUser(user.id); // invalidate every existing session
+  return { ok: true, user: { ...user, passwordHash: undefined } };
 }

@@ -2,12 +2,13 @@ import http from 'node:http';
 import fs from 'node:fs';
 import path from 'node:path';
 import { config } from './src/config.js';
-import { db, init } from './src/store.js';
+import { destinations, packages } from './src/seed.js';
+import { initStore, describeStore, driverName, updateUser } from './src/db.js';
 import {
   html, redirect, send, notFound, readForm, json, securityHeaders,
 } from './src/http.js';
 import {
-  ensureSession, currentUser, verifyCsrf, attemptLogin, registerUser,
+  context, verifyCsrf, attemptLogin, registerUser,
   createSession, destroySession, createResetToken, consumeResetToken,
 } from './src/auth.js';
 import {
@@ -19,21 +20,22 @@ import {
 } from './src/bookings.js';
 import * as v from './src/views.js';
 
-init();
-v.setDestinations(db.destinations);
+const { seededStaff } = await initStore();
+const catalogue = { destinations, packages };
+v.setDestinations(catalogue.destinations);
 
 /* ------------------------------------------------------------------ helpers */
 
 function findPackage(slug) {
-  return db.packages.find((p) => p.slug === slug) || null;
+  return catalogue.packages.find((p) => p.slug === slug) || null;
 }
 
 function findDestination(slug) {
-  return db.destinations.find((d) => d.slug === slug) || null;
+  return catalogue.destinations.find((d) => d.slug === slug) || null;
 }
 
 function packagesForDestination(slug) {
-  return db.packages.filter((p) => p.destination === slug);
+  return catalogue.packages.filter((p) => p.destination === slug);
 }
 
 function flashFromUrl(url) {
@@ -54,20 +56,22 @@ function serveStatic(res, file, type) {
 /* -------------------------------------------------------------------- routes */
 
 const routes = [
-  ['GET', '/healthz', (req, res) => json(res, { ok: true, packages: db.packages.length })],
+  ['GET', '/healthz', async (req, res) => json(res, {
+    ok: true, store: driverName, packages: catalogue.packages.length,
+  })],
 
   ['GET', '/styles.css', (req, res) => serveStatic(res, 'styles.css', 'text/css; charset=utf-8')],
   ['GET', '/app.js', (req, res) => serveStatic(res, 'app.js', 'text/javascript; charset=utf-8')],
 
-  ['GET', '/', (req, res, _p, url, user) => {
+  ['GET', '/', (req, res, _p, url, ctx) => {
     html(res, v.layout({
       title: 'Home',
-      user,
-      body: v.homePage({ packages: db.packages, destinations: db.destinations, user }),
+      user: ctx.user,
+      body: v.homePage({ packages: catalogue.packages, destinations: catalogue.destinations, user: ctx.user }),
     }));
   }],
 
-  ['GET', '/packages', (req, res, _p, url, user) => {
+  ['GET', '/packages', (req, res, _p, url, ctx) => {
     const filters = {
       destination: url.searchParams.get('destination') || '',
       category: url.searchParams.get('category') || '',
@@ -75,28 +79,28 @@ const routes = [
     };
     html(res, v.layout({
       title: 'Packages',
-      user,
-      body: v.packagesPage({ packages: db.packages, destinations: db.destinations, filters, user }),
+      user: ctx.user,
+      body: v.packagesPage({ packages: catalogue.packages, destinations: catalogue.destinations, filters, user: ctx.user }),
     }));
   }],
 
-  ['GET', '/packages/:slug', (req, res, params, _url, user) => {
+  ['GET', '/packages/:slug', (req, res, params, _url, ctx) => {
     const pkg = findPackage(params.slug);
     if (!pkg) return notFound(res);
     html(res, v.layout({
       title: pkg.title,
-      user,
-      body: v.packageDetail({ pkg, destination: findDestination(pkg.destination), user }),
+      user: ctx.user,
+      body: v.packageDetail({ pkg, destination: findDestination(pkg.destination), user: ctx.user }),
     }));
   }],
 
-  ['POST', '/packages/:slug/book', async (req, res, params, _url, user) => {
+  ['POST', '/packages/:slug/book', async (req, res, params, _url, ctx) => {
     const pkg = findPackage(params.slug);
     if (!pkg) return notFound(res);
     const form = await readForm(req);
-    if (!verifyCsrf(req, form.csrf)) return redirect(res, `/packages/${pkg.slug}?err=Your session expired. Please try again.`);
+    if (!verifyCsrf(ctx, form.csrf)) return redirect(res, `/packages/${pkg.slug}?err=Your session expired. Please try again.`);
 
-    const result = createBooking(pkg, {
+    const result = await createBooking(pkg, {
       optionId: form.optionId,
       startDate: form.startDate,
       adults: Number(form.adults),
@@ -104,9 +108,9 @@ const routes = [
       extraIds: [].concat(form.extraIds || []),
       // Signed-in bookers get their account name by default; the field is
       // editable so they can also book for someone else.
-      travellerName: String(form.travellerName || (user ? user.name : '')).trim(),
+      travellerName: String(form.travellerName || (ctx.user ? ctx.user.name : '')).trim(),
       forSomeoneElse: form.forSomeoneElse === '1',
-    }, user);
+    }, ctx.user);
 
     if (!result.ok) {
       return redirect(res, `/packages/${pkg.slug}?err=${encodeURIComponent(result.errors[0])}`);
@@ -117,55 +121,55 @@ const routes = [
   ['GET', '/api/quote', (req, res, _p, url) => {
     const pkg = findPackage(url.searchParams.get('slug'));
     if (!pkg) return json(res, { ok: false, error: 'Unknown package' }, 404);
-    const res2 = quote(pkg, {
+    const priced = quote(pkg, {
       optionId: url.searchParams.get('option'),
       adults: Number(url.searchParams.get('adults') || 1),
       children: Number(url.searchParams.get('children') || 0),
       extraIds: (url.searchParams.get('extras') || '').split(',').filter(Boolean),
     });
-    if (!res2.ok) return json(res, { ok: false, error: res2.error }, 400);
+    if (!priced.ok) return json(res, { ok: false, error: priced.error }, 400);
     json(res, {
       ok: true,
-      currency: res2.currency,
-      lines: res2.lines.map((l) => ({ label: l.label, amount: formatMoney(l.amount, res2.currency) })),
-      total: formatMoney(res2.total, res2.currency),
-      deposit: formatMoney(res2.deposit, res2.currency),
-      balance: formatMoney(res2.balance, res2.currency),
+      currency: priced.currency,
+      lines: priced.lines.map((l) => ({ label: l.label, amount: formatMoney(l.amount, priced.currency) })),
+      total: formatMoney(priced.total, priced.currency),
+      deposit: formatMoney(priced.deposit, priced.currency),
+      balance: formatMoney(priced.balance, priced.currency),
     });
   }],
 
-  ['GET', '/destinations', (req, res, _p, _url, user) => {
+  ['GET', '/destinations', (req, res, _p, _url, ctx) => {
     html(res, v.layout({
       title: 'Destinations',
-      user,
-      body: v.destinationsPage({ destinations: db.destinations, packages: db.packages }),
+      user: ctx.user,
+      body: v.destinationsPage({ destinations: catalogue.destinations, packages: catalogue.packages }),
     }));
   }],
 
-  ['GET', '/destinations/:slug', (req, res, params, _url, user) => {
+  ['GET', '/destinations/:slug', (req, res, params, _url, ctx) => {
     const dest = findDestination(params.slug);
     if (!dest) return notFound(res);
     html(res, v.layout({
       title: dest.name,
-      user,
+      user: ctx.user,
       body: v.destinationDetail({ destination: dest, packages: packagesForDestination(dest.slug) }),
     }));
   }],
 
-  ['GET', '/offers', (req, res, _p, _url, user) => {
-    html(res, v.layout({ title: 'Offers', user, body: v.offersPage({ packages: db.packages }) }));
+  ['GET', '/offers', (req, res, _p, _url, ctx) => {
+    html(res, v.layout({ title: 'Offers', user: ctx.user, body: v.offersPage({ packages: catalogue.packages }) }));
   }],
 
-  ['GET', '/how-booking-works', (req, res, _p, _url, user) => {
-    html(res, v.layout({ title: 'How booking works', user, body: v.howBookingWorksPage() }));
+  ['GET', '/how-booking-works', (req, res, _p, _url, ctx) => {
+    html(res, v.layout({ title: 'How booking works', user: ctx.user, body: v.howBookingWorksPage() }));
   }],
 
-  ['GET', '/bookings/:ref', (req, res, params, url, user) => {
-    const booking = findBookingByRef(params.ref);
+  ['GET', '/bookings/:ref', async (req, res, params, url, ctx) => {
+    const booking = await findBookingByRef(params.ref);
     if (!booking) return notFound(res);
     html(res, v.layout({
       title: `Booking ${booking.ref}`,
-      user,
+      user: ctx.user,
       flash: flashFromUrl(url),
       body: v.bookingPage({ booking, pkg: findPackage(booking.packageId) }),
     }));
@@ -173,104 +177,102 @@ const routes = [
 
   /* ------------------------------------------------------------------ auth */
 
-  ['GET', '/account/login', (req, res, _p, url, user) => {
-    if (user) return redirect(res, '/account');
+  ['GET', '/account/login', (req, res, _p, url, ctx) => {
+    if (ctx.user) return redirect(res, '/account');
     html(res, v.layout({
       title: 'Log in',
-      user,
+      user: ctx.user,
       body: v.loginPage({ error: url.searchParams.get('err') }),
     }));
   }],
 
-  ['POST', '/account/login', async (req, res) => {
+  ['POST', '/account/login', async (req, res, _p, _url, ctx) => {
     const form = await readForm(req);
-    if (!verifyCsrf(req, form.csrf)) return redirect(res, '/account/login?err=Your session expired.');
-    const result = attemptLogin(req, form.handle, form.password);
+    if (!verifyCsrf(ctx, form.csrf)) return redirect(res, '/account/login?err=Your session expired.');
+    const result = await attemptLogin(req, form.handle, form.password);
     if (!result.ok) return redirect(res, `/account/login?err=${encodeURIComponent(result.error)}`);
-    createSession(res, result.user.id);
+    await createSession(res, result.user.id);
     redirect(res, '/account?ok=Signed in.');
   }],
 
-  ['GET', '/account/register', (req, res, _p, url, user) => {
-    if (user) return redirect(res, '/account');
+  ['GET', '/account/register', (req, res, _p, url, ctx) => {
+    if (ctx.user) return redirect(res, '/account');
     html(res, v.layout({
       title: 'Create account',
-      user,
+      user: ctx.user,
       body: v.registerPage({ errors: url.searchParams.get('err') ? [url.searchParams.get('err')] : [] }),
     }));
   }],
 
-  ['POST', '/account/register', async (req, res) => {
+  ['POST', '/account/register', async (req, res, _p, _url, ctx) => {
     const form = await readForm(req);
-    if (!verifyCsrf(req, form.csrf)) return redirect(res, '/account/register?err=Your session expired.');
-    const result = registerUser({
+    if (!verifyCsrf(ctx, form.csrf)) return redirect(res, '/account/register?err=Your session expired.');
+    const result = await registerUser({
       handle: form.handle,
       name: form.name,
       password: form.password,
       consent: form.consent === '1',
     });
     if (!result.ok) return redirect(res, `/account/register?err=${encodeURIComponent(result.errors[0])}`);
-    createSession(res, result.user.id);
+    await createSession(res, result.user.id);
     redirect(res, '/account?ok=Account created.');
   }],
 
-  ['POST', '/account/logout', async (req, res) => {
+  ['POST', '/account/logout', async (req, res, _p, _url, ctx) => {
     const form = await readForm(req);
-    if (verifyCsrf(req, form.csrf)) destroySession(req, res);
+    if (verifyCsrf(ctx, form.csrf)) await destroySession(req, res);
     redirect(res, '/?ok=Signed out.');
   }],
 
-  ['GET', '/account', (req, res, _p, url, user) => {
-    if (!user) return redirect(res, '/account/login');
+  ['GET', '/account', async (req, res, _p, url, ctx) => {
+    if (!ctx.user) return redirect(res, '/account/login');
     html(res, v.layout({
       title: 'Your account',
-      user,
+      user: ctx.user,
       flash: flashFromUrl(url),
-      body: v.accountPage({ user, bookings: bookingsForUser(user.id) }),
+      body: v.accountPage({ user: ctx.user, bookings: await bookingsForUser(ctx.user.id) }),
     }));
   }],
 
-  ['POST', '/account/profile', async (req, res, _p, _url, user) => {
-    if (!user) return redirect(res, '/account/login');
+  ['POST', '/account/profile', async (req, res, _p, _url, ctx) => {
+    if (!ctx.user) return redirect(res, '/account/login');
     const form = await readForm(req);
-    if (!verifyCsrf(req, form.csrf)) return redirect(res, '/account?err=Your session expired.');
+    if (!verifyCsrf(ctx, form.csrf)) return redirect(res, '/account?err=Your session expired.');
     const name = String(form.name || '').trim().slice(0, 80);
     if (name.length < 2) return redirect(res, '/account?err=Please enter a name.');
-    user.name = name;
-    const { save } = await import('./src/store.js');
-    save();
+    await updateUser(ctx.user.id, { name });
     redirect(res, '/account?ok=Profile updated.');
   }],
 
-  ['GET', '/account/password', (req, res, _p, url, user) => {
+  ['GET', '/account/password', (req, res, _p, url, ctx) => {
     html(res, v.layout({
       title: 'Reset password',
-      user,
+      user: ctx.user,
       body: v.resetRequestPage({ message: url.searchParams.get('ok'), token: url.searchParams.get('token') }),
     }));
   }],
 
-  ['POST', '/account/password', async (req, res) => {
+  ['POST', '/account/password', async (req, res, _p, _url, ctx) => {
     const form = await readForm(req);
-    if (!verifyCsrf(req, form.csrf)) return redirect(res, '/account/password?err=Your session expired.');
-    const result = createResetToken(form.handle);
+    if (!verifyCsrf(ctx, form.csrf)) return redirect(res, '/account/password?err=Your session expired.');
+    const result = await createResetToken(form.handle);
     // Never reveal whether the handle exists (R4.11).
     const tokenPart = result.token ? `&token=${result.token}` : '';
     redirect(res, `/account/password?ok=If that account exists, a reset link has been created.${tokenPart}`);
   }],
 
-  ['GET', '/account/password/:token', (req, res, params, _url, user) => {
+  ['GET', '/account/password/:token', (req, res, params, _url, ctx) => {
     html(res, v.layout({
       title: 'Set a new password',
-      user,
+      user: ctx.user,
       body: v.resetSetPage({ token: params.token, error: null, done: false }),
     }));
   }],
 
-  ['POST', '/account/password/:token', async (req, res, params) => {
+  ['POST', '/account/password/:token', async (req, res, params, _url, ctx) => {
     const form = await readForm(req);
-    if (!verifyCsrf(req, form.csrf)) return redirect(res, `/account/password/${params.token}?err=Your session expired.`);
-    const result = consumeResetToken(params.token, form.password);
+    if (!verifyCsrf(ctx, form.csrf)) return redirect(res, `/account/password/${params.token}?err=Your session expired.`);
+    const result = await consumeResetToken(params.token, form.password);
     if (!result.ok) {
       html(res, v.layout({
         title: 'Set a new password',
@@ -288,19 +290,19 @@ const routes = [
 
   /* ----------------------------------------------------------------- staff */
 
-  ['GET', '/staff', (req, res, _p, _url, user) => {
-    if (!user) return redirect(res, '/account/login');
-    if (user.role !== 'staff') return notFound(res);
-    html(res, v.layout({ title: 'Travel desk', user, body: v.staffPage({ bookings: allBookings() }) }));
+  ['GET', '/staff', async (req, res, _p, _url, ctx) => {
+    if (!ctx.user) return redirect(res, '/account/login');
+    if (ctx.user.role !== 'staff') return notFound(res);
+    html(res, v.layout({ title: 'Travel desk', user: ctx.user, body: v.staffPage({ bookings: await allBookings() }) }));
   }],
 
-  ['POST', '/staff/bookings/:id/status', async (req, res, params, _url, user) => {
-    if (!user || user.role !== 'staff') return notFound(res);
+  ['POST', '/staff/bookings/:ref/status', async (req, res, params, _url, ctx) => {
+    if (!ctx.user || ctx.user.role !== 'staff') return notFound(res);
     const form = await readForm(req);
-    if (!verifyCsrf(req, form.csrf)) return redirect(res, '/staff?err=Your session expired.');
-    const booking = db.bookings.find((b) => b.id === params.id);
+    if (!verifyCsrf(ctx, form.csrf)) return redirect(res, '/staff?err=Your session expired.');
+    const booking = await findBookingByRef(params.ref);
     if (!booking) return notFound(res);
-    setStatus(booking, form.status, user.handle);
+    await setStatus(booking, form.status, ctx.user.handle);
     redirect(res, '/staff?ok=Status updated.');
   }],
 ];
@@ -322,13 +324,17 @@ function matchRoute(method, pathname) {
 
 /* ------------------------------------------------------------------- server */
 
+// Housekeeping: expire stale reservations in the background, not per request.
+const SWEEP_EVERY_MS = 10 * 60 * 1000;
+setInterval(() => {
+  sweepExpired().catch((error) => console.error('sweep failed:', error.message));
+}, SWEEP_EVERY_MS).unref();
+
 const server = http.createServer(async (req, res) => {
   try {
     const url = new URL(req.url, `http://${req.headers.host || 'localhost'}`);
-    const session = ensureSession(req, res);
-    v.setCsrf(session.csrf);
-    const user = currentUser(req);
-    sweepExpired();
+    const ctx = await context(req, res);
+    v.setCsrf(ctx.session.csrf);
 
     if (!['GET', 'POST'].includes(req.method)) {
       return send(res, 405, 'Method not allowed', { Allow: 'GET, POST', ...securityHeaders() });
@@ -337,7 +343,7 @@ const server = http.createServer(async (req, res) => {
     const matched = matchRoute(req.method, url.pathname);
     if (!matched) return notFound(res);
 
-    await matched.handler(req, res, matched.params, url, user);
+    await matched.handler(req, res, matched.params, url, ctx);
   } catch (error) {
     console.error(error);
     if (!res.headersSent) {
@@ -351,9 +357,10 @@ const server = http.createServer(async (req, res) => {
 });
 
 server.listen(config.port, config.host, () => {
-  console.log(`Bonfire Adventures prototype`);
+  console.log('Bonfire Adventures prototype');
   console.log(`  http://${config.host}:${config.port}`);
-  console.log(`  packages: ${db.packages.length}   destinations: ${db.destinations.length}`);
+  console.log(`  store: ${describeStore()}`);
+  console.log(`  packages: ${catalogue.packages.length}   destinations: ${catalogue.destinations.length}`);
   console.log(`  WhatsApp entry: ${config.whatsappNumber ? `ON (${config.whatsappPlacement})` : 'OFF (no number configured)'}`);
-  console.log(`  staff account: ${db.users.some((u) => u.role === 'staff') ? 'seeded' : 'none (set ADMIN_HANDLE/ADMIN_PASSWORD)'}`);
+  console.log(`  staff account: ${config.adminHandle ? (seededStaff ? 'seeded' : 'present') : 'none (set ADMIN_HANDLE/ADMIN_PASSWORD)'}`);
 });

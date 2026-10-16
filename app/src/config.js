@@ -24,6 +24,13 @@ export const config = {
   publicDir: path.join(APP_DIR, 'public'),
   dataFile: process.env.DATA_FILE || path.join(APP_DIR, 'data', 'db.json'),
 
+  // Storage — 'supabase' (shared Postgres) or 'json' (local file fallback).
+  // Auto-detected: Supabase wins whenever its URL + service key are present.
+  storeDriver: (process.env.STORE || '').trim().toLowerCase(),
+  supabaseUrl: (process.env.SUPABASE_URL || '').trim().replace(/\/+$/, ''),
+  supabaseAnonKey: (process.env.SUPABASE_ANON_KEY || '').trim(),
+  supabaseServiceKey: (process.env.SUPABASE_SERVICE_ROLE_KEY || '').trim(),
+
   host: process.env.HOST || '127.0.0.1',
   port: Number(process.env.PORT || 3000),
   isProd: process.env.NODE_ENV === 'production',
@@ -44,3 +51,14 @@ export const config = {
   adminHandle: (process.env.ADMIN_HANDLE || '').trim(),
   adminPassword: process.env.ADMIN_PASSWORD || '',
 };
+
+// Derived: Supabase needs a URL and the server-only service key. When either is
+// missing we fall back to the JSON file driver so the repo still runs with no
+// configuration at all (and no secrets committed).
+config.supabaseReady = Boolean(config.supabaseUrl && config.supabaseServiceKey);
+if (!['supabase', 'json'].includes(config.storeDriver)) {
+  config.storeDriver = config.supabaseReady ? 'supabase' : 'json';
+}
+if (config.storeDriver === 'supabase' && !config.supabaseReady) {
+  throw new Error('STORE=supabase requires SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY.');
+}

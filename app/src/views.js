@@ -519,7 +519,7 @@ export function staffPage({ bookings }) {
       <td>${badge(b.status, b.status === 'confirmed' ? 'ok' : b.status === 'cancelled' || b.status === 'expired' ? 'danger' : 'warn')}</td>
       <td>${money(b.total, b.currency)}</td>
       <td>
-        <form method="post" action="/staff/bookings/${e(b.id)}/status" class="inline">
+        <form method="post" action="/staff/bookings/${e(b.ref)}/status" class="inline">
           <input type="hidden" name="csrf" value="${e(csrfToken)}">
           <select name="status">
             ${['reserved', 'confirmed', 'cancelled', 'expired'].map((s) => `<option value="${s}" ${b.status === s ? 'selected' : ''}>${s}</option>`).join('')}

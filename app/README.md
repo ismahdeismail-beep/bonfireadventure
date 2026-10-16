@@ -38,13 +38,36 @@ WHATSAPP_NUMBER=... \
 node server.js
 ```
 
-### Reset the data
+### Where the data lives
 
-State is a single JSON file at `app/data/db.json` (gitignored). Delete it, or:
+Accounts, sessions and bookings are kept in **Supabase Postgres** when the
+environment provides `SUPABASE_URL` and `SUPABASE_SERVICE_ROLE_KEY`; otherwise
+the app falls back to a local JSON file at `app/data/db.json` (gitignored). Both
+paths go through one async interface (`src/db.js`), so nothing else in the app
+changes. See **ADR-0005** for why, and for the security rules around the
+`service_role` key.
 
 ```sh
-node scripts/reset.js
+# Supabase (only needs the two variables above; usually read from .env)
+node server.js
+
+# Force the offline JSON file instead
+STORE=json node server.js
 ```
+
+The schema lives in `supabase/migrations/0001_bonfire_core.sql` — every table is
+prefixed `bonfire_` because the Supabase project is shared with other work. Apply
+it with the Supabase CLI (`supabase db push`) or by pasting it into the SQL
+editor.
+
+### Reset the data
+
+```sh
+node scripts/reset.js          # clears the active store and re-seeds staff
+```
+
+With `STORE=json` this simply rewrites `app/data/db.json`. With Supabase it
+deletes rows **only** from the `bonfire_*` tables.
 
 ## What to try
 
@@ -68,6 +91,10 @@ node scripts/reset.js
 | Accounts, sessions, CSRF, rate limiting, reset tokens | `src/auth.js` |
 | Password hashing (scrypt, constant-time compare) | `src/password.js` |
 | Security headers (CSP, HSTS, `X-Frame-Options`, nosniff…) | `src/http.js` |
+| Storage facade + driver selection | `src/db.js` |
+| Supabase PostgREST driver (`bonfire_*` tables) | `src/drivers/supabase.js` |
+| Offline JSON driver (fallback) | `src/drivers/json.js` |
+| SQL schema / migration | `supabase/migrations/0001_bonfire_core.sql` |
 | Seed catalogue (destinations + packages) | `src/seed.js` |
 | WhatsApp single entry point | `whatsappEntry()` in `src/views.js` |
 
@@ -92,7 +119,8 @@ delivery (reset links are shown on screen), and no payment provider.
 
 The target environment had Node and nothing else (no Docker, no Composer), and
 the whole point is to demonstrate the *booking and account logic*. Keeping it
-dependency-free means it runs anywhere `node` does.
+dependency-free means it runs anywhere `node` does — including talking to
+Supabase, which is done with the built-in `fetch` rather than an SDK.
 
 ## Open decisions this prototype does not settle
 
@@ -104,3 +132,6 @@ See `../docs/decisions/`:
   This build currently allows **both** (a guest can book with just a name) and
   is designed so either can be enforced later.
 - **ADR-0002** — where the WhatsApp entry point sits (currently package detail only).
+
+Storage is settled: **ADR-0005** — accounts and bookings live in the shared
+Supabase project, in `bonfire_*` tables, reached only from the server.

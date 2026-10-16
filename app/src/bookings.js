@@ -1,4 +1,7 @@
-import { db, save } from './store.js';
+import {
+  insertBooking, getBookingByRef, getBookingById, listBookingsForUser,
+  listAllBookings, updateBooking, sweepExpiredReservations, newId,
+} from './db.js';
 import { quote, findOption, isExpired } from './pricing.js';
 
 export const STATUSES = ['enquiry', 'reserved', 'confirmed', 'cancelled', 'expired'];
@@ -13,22 +16,24 @@ function todayISO() {
   return d.toISOString().slice(0, 10);
 }
 
-export function newRef() {
-  let ref;
-  do {
-    ref = `BF-${Math.random().toString(36).slice(2, 7).toUpperCase()}`;
-  } while (db.bookings.some((b) => b.ref === ref));
-  return ref;
+export async function newRef() {
+  for (let i = 0; i < 10; i += 1) {
+    const ref = `BF-${Math.random().toString(36).slice(2, 7).toUpperCase()}`;
+    if (!(await getBookingByRef(ref))) return ref;
+  }
+  return `BF-${Date.now().toString(36).slice(-5).toUpperCase()}`;
 }
 
 export function findBookingByRef(ref) {
-  return db.bookings.find((b) => b.ref === String(ref).toUpperCase()) || null;
+  return getBookingByRef(ref);
+}
+
+export function findBookingById(id) {
+  return getBookingById(id);
 }
 
 export function bookingsForUser(userId) {
-  return db.bookings
-    .filter((b) => b.userId === userId)
-    .sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+  return listBookingsForUser(userId);
 }
 
 /** R3.10 — all validation is server-side. */
@@ -62,7 +67,7 @@ export function validateBooking(pkg, { optionId, startDate, adults, children, tr
 }
 
 /** R3.4–R3.7 — create a stored booking with a lifecycle status and reference. */
-export function createBooking(pkg, input, user) {
+export async function createBooking(pkg, input, user) {
   const { ok, errors } = validateBooking(pkg, input);
   if (!ok) return { ok: false, errors };
 
@@ -76,8 +81,8 @@ export function createBooking(pkg, input, user) {
 
   const now = new Date().toISOString();
   const booking = {
-    id: `bk_${Math.random().toString(36).slice(2, 10)}`,
-    ref: newRef(),
+    id: newId(),
+    ref: await newRef(),
     userId: user ? user.id : null,
     // The lead traveller for this booking. Pre-filled from the account when the
     // booker is signed in, but stored on the booking itself so a member can also
@@ -102,46 +107,31 @@ export function createBooking(pkg, input, user) {
     updatedAt: now,
   };
 
-  db.bookings.push(booking);
-  save();
-  return { ok: true, booking };
+  const stored = await insertBooking(booking);
+  return { ok: true, booking: stored || booking };
 }
 
 /** R3.7 — expire stale, unconfirmed reservations. */
-export function sweepExpired() {
-  const now = Date.now();
-  let changed = false;
-  for (const b of db.bookings) {
-    if (b.status === 'reserved' && now - Date.parse(b.createdAt) > RESERVATION_TTL_MS) {
-      b.status = 'expired';
-      b.updatedAt = new Date().toISOString();
-      b.history.push({ at: b.updatedAt, status: 'expired', by: 'system' });
-      changed = true;
-    }
-  }
-  if (changed) save();
+export async function sweepExpired() {
+  return sweepExpiredReservations(RESERVATION_TTL_MS);
 }
 
-export function setStatus(booking, status, actor) {
+export async function setStatus(booking, status, actor) {
   if (!STATUSES.includes(status)) return { ok: false, error: 'Unknown status.' };
   const now = new Date().toISOString();
-  booking.status = status;
-  booking.updatedAt = now;
-  booking.history.push({ at: now, status, by: actor || 'staff' });
-  save();
-  return { ok: true, booking };
+  const history = [...(booking.history || []), { at: now, status, by: actor || 'staff' }];
+  const updated = await updateBooking(booking.id, { status, updatedAt: now, history });
+  return { ok: true, booking: updated || { ...booking, status, updatedAt: now, history } };
 }
 
-export function setPaymentStatus(booking, status, actor) {
+export async function setPaymentStatus(booking, status, actor) {
   if (!PAYMENT_STATUSES.includes(status)) return { ok: false, error: 'Unknown payment status.' };
   const now = new Date().toISOString();
-  booking.paymentStatus = status;
-  booking.updatedAt = now;
-  booking.history.push({ at: now, status: `payment:${status}`, by: actor || 'staff' });
-  save();
-  return { ok: true, booking };
+  const history = [...(booking.history || []), { at: now, status: `payment:${status}`, by: actor || 'staff' }];
+  const updated = await updateBooking(booking.id, { paymentStatus: status, updatedAt: now, history });
+  return { ok: true, booking: updated || { ...booking, paymentStatus: status, updatedAt: now, history } };
 }
 
 export function allBookings() {
-  return [...db.bookings].sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+  return listAllBookings();
 }
