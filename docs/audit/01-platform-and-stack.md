@@ -5,7 +5,7 @@
 ## Summary
 
 The live site is a **WordPress site built with Elementor / Elementor Pro**, using
-the **Nicdark "Love Travel"** theme, and extended with a small set of plugins.
+the **Nicdark Travel** theme, and extended with a small set of plugins.
 There is **no booking engine** and **no functioning commerce or account layer**.
 
 ## Platform
@@ -14,7 +14,7 @@ There is **no booking engine** and **no functioning commerce or account layer**.
 |---|---|---|
 | CMS | WordPress (core sitemaps enabled at `wp-sitemap.xml`) | `evidence/sitemap-index.xml` |
 | Page builder | Elementor + Elementor Pro | `wp-content/plugins/elementor`, `elementor-pro` |
-| Theme | Nicdark **Love Travel** (`lovetravel`) | `wp-content/themes/lovetravel`; CPTs `nd_travel_cpt_1/2/3` |
+<|channel|> Theme | Nicdark (`lovetravel`); provides the CPTs `nd_travel_cpt_1/2/3` | `wp-content/themes/lovetravel` |
 | Server | Apache, HTTP/2, PHP 8.3.33 (`x-powered-by: PHP/8.3.33`) | response headers |
 | Media | Timestamped uploads under `/wp-content/uploads/2026/…` | page HTML |
 
