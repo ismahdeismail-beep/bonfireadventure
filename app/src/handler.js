@@ -20,29 +20,40 @@ import {
 } from './bookings.js';
 import * as v from './views.js';
 
-let ready = null;
+let readyPromise = null;
+let readyError = null;
 let catalogue = { destinations: SEED_DESTINATIONS, packages: SEED_PACKAGES };
 
 async function ensureReady() {
-  if (ready) return ready;
-  ready = (async () => {
-    await initStore();
-    catalogue = { destinations: SEED_DESTINATIONS, packages: SEED_PACKAGES };
-    v.setDestinations(catalogue.destinations);
+  if (readyError) throw new Error(readyError);
+  if (!readyPromise) {
+    readyPromise = (async () => {
+      try {
+        await initStore();
+        catalogue = { destinations: SEED_DESTINATIONS, packages: SEED_PACKAGES };
+        v.setDestinations(catalogue.destinations);
 
-    // Housekeeping: expire stale reservations in the background, but only in a
-    // long-running process. Serverless runtimes should not schedule intervals.
-    if (!process.env.VERCEL) {
-      const SWEEP_EVERY_MS = 10 * 60 * 1000;
-      setInterval(() => {
-        sweepExpired().catch((error) => console.error('sweep failed:', error.message));
-      }, SWEEP_EVERY_MS).unref();
-    }
-    return { seededStaff: true };
-  })();
-  return ready;
+        if (process.env.VERCEL !== "1" && !process.env.VERCEL_ENV) {
+          const SWEEP_EVERY_MS = 10 * 60 * 1000;
+          setInterval(() => {
+            sweepExpired().catch((error) => console.error("sweep failed:", error.message));
+          }, SWEEP_EVERY_MS).unref();
+        }
+        return { ok: true };
+      } catch (e) {
+        readyError = `ensureReady failed: ${e && e.message || e}`;
+        throw e;
+      }
+    })();
+  }
+  try {
+    return await readyPromise;
+  } catch (e) {
+    throw e;
+  }
 }
 
+// make sure the original function name isn't duplicated 
 /* ------------------------------------------------------------------ helpers */
 
 function findPackage(slug) {
@@ -75,9 +86,16 @@ function serveStatic(res, file, type) {
 /* -------------------------------------------------------------------- routes */
 
 const routes = [
-  ['GET', '/healthz', async (req, res) => json(res, {
-    ok: true, store: driverName, packages: catalogue.packages.length,
-  })],
+  ['GET', '/healthz', async (req, res) => {
+    let loadError = null;
+    try { await ensureReady(); } catch (e) { loadError = e && e.message || String(e); }
+    json(res, {
+      ok: !loadError,
+      store: driverName,
+      packages: catalogue.packages.length,
+      ...(loadError ? { loadError } : {}),
+    });
+  }],
 
   ['GET', '/styles.css', (req, res) => serveStatic(res, 'styles.css', 'text/css; charset=utf-8')],
   ['GET', '/app.js', (req, res) => serveStatic(res, 'app.js', 'text/javascript; charset=utf-8')],
