@@ -64,14 +64,21 @@ const NAV = [
   ['/how-booking-works', 'How booking works'],
 ];
 
-export function layout({ title, user, flash, nav = true, body }) {
+let _currentRoute = '';
+export function setCurrentRoute(p) { _currentRoute = p || ''; }
+
+export function layout({ title, user, flash, nav = true, currentPath, body }) {
+  const path = currentPath || _currentRoute || '';
   const navHtml = nav
     ? `<header class="site-header">
         <a class="brand" href="/">
           <img src="/img/logo.webp" alt="Bonfire Adventures" class="brand-logo">
         </a>
-        <nav class="site-nav">
-          ${NAV.map(([href, label]) => `<a href="${href}">${e(label)}</a>`).join('')}
+        <nav class="site-nav" aria-label="Main navigation">
+          ${NAV.map(([href, label]) => {
+            const active = path === href ? ' is-active' : '';
+            return `<a href="${href}" class="nav-link${active}">${e(label)}</a>`;
+          }).join('')}
         </nav>
         <div class="nav-account">
           ${user

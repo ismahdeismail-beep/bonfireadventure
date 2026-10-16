@@ -385,6 +385,7 @@ export async function handleRequest(req, res) {
     await ensureReady();
 
     const url = new URL(req.url, `http://${req.headers.host || 'localhost'}`);
+    v.setCurrentRoute(url.pathname);
     const ctx = await context(req, res);
     v.setCsrf(ctx.session.csrf);
 
