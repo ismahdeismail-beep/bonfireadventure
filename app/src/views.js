@@ -68,8 +68,7 @@ export function layout({ title, user, flash, nav = true, body }) {
   const navHtml = nav
     ? `<header class="site-header">
         <a class="brand" href="/">
-          <span class="brand-mark">BA</span>
-          <span class="brand-name">Bonfire Adventures</span>
+          <img src="/img/logo.webp" alt="Bonfire Adventures" class="brand-logo">
         </a>
         <nav class="site-nav">
           ${NAV.map(([href, label]) => `<a href="${href}">${e(label)}</a>`).join('')}
