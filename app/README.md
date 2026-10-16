@@ -97,6 +97,8 @@ deletes rows **only** from the `bonfire_*` tables.
 | SQL schema / migration | `supabase/migrations/0001_bonfire_core.sql` |
 | Seed catalogue (destinations + packages) | `src/seed.js` |
 | WhatsApp single entry point | `whatsappEntry()` in `src/views.js` |
+| M-Pesa payment panel (booking confirmation) | `paymentPanel()` in `src/views.js` |
+| Photography (bundled, CSP self-only) | `public/img/` (71 photos) |
 
 ## Security notes (fixing the live-site baseline)
 
@@ -132,6 +134,8 @@ See `../docs/decisions/`:
   This build currently allows **both** (a guest can book with just a name) and
   is designed so either can be enforced later.
 - **ADR-0002** — where the WhatsApp entry point sits (currently package detail only).
-
-Storage is settled: **ADR-0005** — accounts and bookings live in the shared
-Supabase project, in `bonfire_*` tables, reached only from the server.
+- **ADR-0006** — payment instructions (official M-Pesa paybill on the booking
+  confirmation page, values from the environment, the customer-care phone stays
+  suppressed per ADR-0001).
+- **ADR-0005** — accounts and bookings live in the shared Supabase project,
+  in `bonfire_*` tables, reached only from the server.

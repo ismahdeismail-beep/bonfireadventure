@@ -10,6 +10,7 @@ import {
 import {
   context, verifyCsrf, attemptLogin, registerUser,
   createSession, destroySession, createResetToken, consumeResetToken,
+  changeOwnPassword,
 } from './src/auth.js';
 import {
   quote, formatMoney,
@@ -62,6 +63,17 @@ const routes = [
 
   ['GET', '/styles.css', (req, res) => serveStatic(res, 'styles.css', 'text/css; charset=utf-8')],
   ['GET', '/app.js', (req, res) => serveStatic(res, 'app.js', 'text/javascript; charset=utf-8')],
+
+  // Photography ships with the build (ADR-0006) — long-lived cache, no hotlinking.
+  ['GET', '/img/:file', (req, res, params) => {
+    const dir = path.join(config.publicDir, 'img');
+    const full = path.join(dir, params.file);
+    if (!full.startsWith(dir) || !fs.existsSync(full)) return notFound(res);
+    send(res, 200, fs.readFileSync(full), {
+      'Content-Type': 'image/webp',
+      'Cache-Control': 'public, max-age=31536000, immutable',
+    });
+  }],
 
   ['GET', '/', (req, res, _p, url, ctx) => {
     html(res, v.layout({
@@ -237,11 +249,40 @@ const routes = [
   ['POST', '/account/profile', async (req, res, _p, _url, ctx) => {
     if (!ctx.user) return redirect(res, '/account/login');
     const form = await readForm(req);
-    if (!verifyCsrf(ctx, form.csrf)) return redirect(res, '/account?err=Your session expired.');
+    if (!verifyCsrf(ctx, form.csrf)) return redirect(res, '/account/settings?err=Your session expired.');
     const name = String(form.name || '').trim().slice(0, 80);
-    if (name.length < 2) return redirect(res, '/account?err=Please enter a name.');
+    if (name.length < 2) return redirect(res, '/account/settings?err=Please enter a name.');
     await updateUser(ctx.user.id, { name });
     redirect(res, '/account?ok=Profile updated.');
+  }],
+
+  ['GET', '/account/settings', (req, res, _p, url, ctx) => {
+    if (!ctx.user) return redirect(res, '/account/login');
+    html(res, v.layout({
+      title: 'Account settings',
+      user: ctx.user,
+      flash: flashFromUrl(url),
+      body: v.settingsPage({ user: ctx.user }),
+    }));
+  }],
+
+  ['POST', '/account/settings/name', async (req, res, _p, _url, ctx) => {
+    if (!ctx.user) return redirect(res, '/account/login');
+    const form = await readForm(req);
+    if (!verifyCsrf(ctx, form.csrf)) return redirect(res, '/account/settings?err=Your session expired.');
+    const name = String(form.name || '').trim().slice(0, 80);
+    if (name.length < 2) return redirect(res, '/account/settings?err=Please enter a name.');
+    await updateUser(ctx.user.id, { name });
+    redirect(res, '/account?ok=Name updated.');
+  }],
+
+  ['POST', '/account/settings/password', async (req, res, _p, _url, ctx) => {
+    if (!ctx.user) return redirect(res, '/account/login');
+    const form = await readForm(req);
+    if (!verifyCsrf(ctx, form.csrf)) return redirect(res, '/account/settings?err=Your session expired.');
+    const result = await changeOwnPassword(ctx.user.id, form.current, form.password, ctx.session.id);
+    if (!result.ok) return redirect(res, `/account/settings?err=${encodeURIComponent(result.error)}`);
+    redirect(res, '/account?ok=Password changed — your other devices were signed out.');
   }],
 
   ['GET', '/account/password', (req, res, _p, url, ctx) => {
@@ -362,5 +403,6 @@ server.listen(config.port, config.host, () => {
   console.log(`  store: ${describeStore()}`);
   console.log(`  packages: ${catalogue.packages.length}   destinations: ${catalogue.destinations.length}`);
   console.log(`  WhatsApp entry: ${config.whatsappNumber ? `ON (${config.whatsappPlacement})` : 'OFF (no number configured)'}`);
+  console.log(`  Payment panel: ${config.payReady ? `ON (${config.payProvider})` : 'OFF (no paybill configured)'}`);
   console.log(`  staff account: ${config.adminHandle ? (seededStaff ? 'seeded' : 'present') : 'none (set ADMIN_HANDLE/ADMIN_PASSWORD)'}`);
 });
