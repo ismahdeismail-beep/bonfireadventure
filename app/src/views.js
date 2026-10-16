@@ -388,6 +388,14 @@ export function homePage({ packages, destinations, user }) {
     <div class="dest-grid">${destinations.filter((d) => d.region !== 'Kenya').slice(0, 8).map((d) => destinationCard(d, counts[d.slug] || 0)).join('')}</div>
   </section>
 
+  <section class="section scroll-strip">
+    <h2>Highlights</h2>
+    <div class="scroll-strip-track">
+      ${bookable.map((p,i) => `${mediaImage(photoForPackage(p), p.title, 640, 400)}`).join('')}
+      ${bookable.map((p,i) => `${mediaImage(photoForPackage(p), p.title, 640, 400)}`).join('')}
+    </div>
+  </section>
+
   <section class="section promise">
     <h2>Why travel with Bonfire</h2>
     <p class="lede">For years we’ve helped travellers plan seamless coastal trips, safari experiences and international journeys with clarity and reliable support. Our focus is simple: structured planning, transparent pricing, dependable execution.</p>
@@ -418,6 +426,7 @@ export function packagesPage({ packages, destinations, filters, user }) {
   const shown = packages.filter((p) => {
     if (filters.destination && p.destination !== filters.destination) return false;
     if (filters.category && p.category !== filters.category) return false;
+    if (filters.q && !`${p.title} ${p.summary} ${p.category}`.toLowerCase().includes(filters.q.toLowerCase().trim())) return false;
     if (filters.excludeExpired && isExpired(p)) return false;
     return true;
   });
@@ -430,6 +439,7 @@ export function packagesPage({ packages, destinations, filters, user }) {
   </header>
 
   <form class="filters" method="get" action="/packages">
+    <label class="field"><span>Keyword</span><input type="text" name="q" value="${e(filters.q || '')}" placeholder="Search packages…"></label>
     <label class="field"><span>Destination</span>
       <select name="destination">
         <option value="">All destinations</option>

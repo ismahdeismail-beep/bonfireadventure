@@ -106,6 +106,7 @@ const routes = [
     const filters = {
       destination: url.searchParams.get('destination') || '',
       category: url.searchParams.get('category') || '',
+      q: url.searchParams.get('q') || '',
       excludeExpired: url.searchParams.get('hide') === 'expired',
     };
     html(res, v.layout({

@@ -443,3 +443,9 @@ fieldset.field legend { padding: 0 .4rem; color: var(--ink-soft); font-size: .85
 .promise-stats div { background: var(--card); border: 1px solid var(--line); border-radius: var(--radius); padding: .9rem 1rem; }
 .promise-stats strong { display: block; font-family: var(--serif); font-size: 1.8rem; color: var(--accent); }
 .promise-stats span { font-size: .85rem; color: var(--ink-soft); }
+
+.scroll-strip { overflow: hidden; }
+.scroll-strip-track { display: flex; gap: 1rem; animation: scroll-left 34s linear infinite; width: max-content; }
+.scroll-strip-track img { width: 280px; height: 175px; object-fit: cover; border-radius: var(--radius); }
+@keyframes scroll-left { from { transform: translateX(0); } to { transform: translateX(-50%); } }
+@media (prefers-reduced-motion: reduce) { .scroll-strip-track { animation: none; overflow: auto; } }
