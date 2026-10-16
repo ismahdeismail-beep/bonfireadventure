@@ -490,4 +490,8 @@ html { scroll-behavior: smooth; }
   .mobile-bar-btn span { line-height: 1; }
   .mobile-bar-btn.is-active, .mobile-bar-btn:hover { color: var(--accent); background: var(--accent-tint); }
   main.page { padding-bottom: clamp(1.25rem, 4vw, 2.5rem); }
+@media (max-width: 860px) { main.page { padding-bottom: 5.5rem; } }
+.card-body { gap: .45rem; padding: .85rem 1rem 1rem; }
+.grid { gap: 1rem; }
+
 }
