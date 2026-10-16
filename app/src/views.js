@@ -67,7 +67,7 @@ const NAV = [
 let _currentRoute = '';
 export function setCurrentRoute(p) { _currentRoute = p || ''; }
 
-export function layout({ title, user, flash, nav = true, currentPath, body }) {
+export function layout({ title, user, flash, nav = true, currentPath = '', body }) {
   const path = currentPath || _currentRoute || '';
   const navHtml = nav
     ? `<header class="site-header">
