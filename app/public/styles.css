@@ -508,4 +508,9 @@ html { scroll-behavior: smooth; }
   h1 { font-size: clamp(1.65rem, 8vw, 2.3rem); }
   h2 { font-size: clamp(1.25rem, 6vw, 1.6rem); }
   .page-head .lede { font-size: .95rem; }
+  .field-row { flex-direction: column; }
+  .field-row .field { flex: 1 1 100%; min-width: 0; }
+  .auth { margin: .5rem; padding: 1.25rem; }
+  .booking-form, .stack { gap: .7rem; }
+  .btn-lg { padding: .65rem 1.1rem; }
 }
