@@ -550,3 +550,11 @@ html { scroll-behavior: smooth; }
 .option-grid .opt input:checked + .opt-label { font-weight: 600; }
 .quote { box-shadow: var(--shadow); }
 .booking-form button[type=submit] { width: 100%; max-width: 360px; margin: 0 auto; display: block; }
+
+/* Minimal booking form tweaks */
+.booking-form details.field { padding: .5rem .6rem; }
+.booking-form details.field summary { cursor: pointer; color: var(--ink-soft); font-size: .9rem; }
+.booking-form details.field summary:hover { color: var(--accent); }
+.booking-form .field-row { display: flex; gap: .5rem; flex-wrap: wrap; }
+.booking-form .field-row .field { flex: 1 1 120px; }
+.booking-form .quote { margin-top: .5rem; }
