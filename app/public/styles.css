@@ -538,3 +538,15 @@ html { scroll-behavior: smooth; }
   .panel { padding: 1rem; }
   .table-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; }
 }
+
+/* ---------------------------------------------------------------- booking restructure */
+
+.booking-block { background: var(--card); border: 1px solid var(--line); border-radius: var(--radius); padding: 1rem 1.1rem; margin-bottom: .75rem; }
+.booking-block h3 { font-family: var(--sans); font-size: .85rem; text-transform: uppercase; letter-spacing: .06em; color: var(--ink-soft); margin: 0 0 .75rem; font-weight: 600; }
+.option-grid { display: grid; grid-template-columns: 1fr; gap: .35rem; }
+@media (min-width: 640px) { .option-grid { grid-template-columns: 1fr 1fr; } }
+.option-grid .opt { background: #fafafa; border: 1px solid var(--line); border-radius: 8px; padding: .5rem .6rem; }
+.option-grid .opt:hover { border-color: var(--accent); }
+.option-grid .opt input:checked + .opt-label { font-weight: 600; }
+.quote { box-shadow: var(--shadow); }
+.booking-form button[type=submit] { width: 100%; max-width: 360px; margin: 0 auto; display: block; }

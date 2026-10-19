@@ -278,18 +278,24 @@ export function packageDetail({ pkg, destination, user }) {
        </div>`
     : `<form class="booking-form" method="post" action="/packages/${e(pkg.slug)}/book" data-quote-form>
         <input type="hidden" name="csrf" value="${e(csrfToken)}">
-        ${travellerField(user)}
-        <fieldset class="field">
-          <legend>Choose your option</legend>
-          ${options}
-        </fieldset>
-        ${extras ? `<fieldset class="field"><legend>Optional extras</legend>${extras}</fieldset>` : ''}
-        <div class="field-row">
-          <label class="field"><span>Start date</span><input type="date" name="startDate" required min="${new Date().toISOString().slice(0, 10)}"></label>
-          <label class="field"><span>Adults</span><input type="number" name="adults" min="1" max="12" value="2" required></label>
-          <label class="field"><span>Children</span><input type="number" name="children" min="0" max="10" value="0" required></label>
+        <div class="booking-block">
+          <h3>1 · Lead traveller</h3>
+          ${travellerField(user)}
         </div>
-        <p class="muted small">Traveller counts only — we do not collect ages, dates of birth, passport or ID details in this phase.</p>
+        <div class="booking-block">
+          <h3>2 · Choose your option</h3>
+          <div class="option-grid">${options}</div>
+        </div>
+        ${extras ? `<div class="booking-block"><h3>3 · Optional extras</h3><div class="option-grid">${extras}</div></div>` : ''}
+        <div class="booking-block">
+          <h3>${extras ? '4' : '3'} · Dates &amp; travellers</h3>
+          <div class="field-row">
+            <label class="field"><span>Start date</span><input type="date" name="startDate" required min="${new Date().toISOString().slice(0, 10)}"></label>
+            <label class="field"><span>Adults</span><input type="number" name="adults" min="1" max="12" value="2" required></label>
+            <label class="field"><span>Children</span><input type="number" name="children" min="0" max="10" value="0" required></label>
+          </div>
+          <p class="muted small">Traveller counts only — no ages, dates of birth, passport or ID details.</p>
+        </div>
         <div class="quote" id="quote" data-slug="${e(pkg.slug)}">
           <h3>Your price</h3>
           <p class="muted">Fill in the form to see an exact price. Nothing is charged in this build.</p>
