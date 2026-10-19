@@ -62,3 +62,96 @@ if (form && box) {
   form.addEventListener('change', update);
   update();
 }
+
+// --------------------------------------------------------------- install app
+// Makes the site downloadable to the home screen. The browser decides when the
+// site is installable and fires `beforeinstallprompt`; we hold that event and
+// hand it back on a real tap. iOS Safari never fires it, so there we explain
+// the Share -> Add to Home Screen route instead.
+
+const DISMISS_KEY = 'bonfire:install-dismissed';
+
+const banner = document.getElementById('install-banner');
+const hint = document.getElementById('install-hint');
+const installNow = document.getElementById('install-now');
+const installLater = document.getElementById('install-later');
+const headerBtn = document.getElementById('install-header');
+
+let deferredPrompt = null;
+
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('/sw.js').catch(() => {
+      /* Installability is a bonus; never let registration break the page. */
+    });
+  });
+}
+
+function isStandalone() {
+  return window.matchMedia('(display-mode: standalone)').matches
+    || window.matchMedia('(display-mode: fullscreen)').matches
+    || window.navigator.standalone === true;
+}
+
+function isIos() {
+  return /iphone|ipad|ipod/i.test(window.navigator.userAgent)
+    || (window.navigator.platform === 'MacIntel' && window.navigator.maxTouchPoints > 1);
+}
+
+function dismissed() {
+  try { return window.localStorage.getItem(DISMISS_KEY) === '1'; } catch { return false; }
+}
+
+function rememberDismiss() {
+  try { window.localStorage.setItem(DISMISS_KEY, '1'); } catch { /* private mode */ }
+}
+
+function openBanner(message) {
+  if (!banner || isStandalone() || dismissed()) return;
+  // With no native prompt available (iOS), the banner is instruction-only.
+  if (!deferredPrompt && isIos() && installNow) installNow.hidden = true;
+  if (message && hint) hint.textContent = message;
+  banner.hidden = false;
+}
+
+function closeBanner() {
+  if (banner) banner.hidden = true;
+}
+
+async function install() {
+  if (deferredPrompt) {
+    deferredPrompt.prompt();
+    const { outcome } = await deferredPrompt.userChoice;
+    deferredPrompt = null;
+    if (headerBtn) headerBtn.hidden = true;
+    if (outcome === 'accepted') rememberDismiss();
+    closeBanner();
+    return;
+  }
+  if (isIos()) {
+    openBanner('Tap the Share button, then “Add to Home Screen”.');
+  }
+}
+
+window.addEventListener('beforeinstallprompt', (event) => {
+  event.preventDefault();
+  deferredPrompt = event;
+  if (headerBtn) headerBtn.hidden = false;
+  openBanner();
+});
+
+window.addEventListener('appinstalled', () => {
+  rememberDismiss();
+  deferredPrompt = null;
+  closeBanner();
+});
+
+if (installNow) installNow.addEventListener('click', install);
+if (installLater) installLater.addEventListener('click', () => { rememberDismiss(); closeBanner(); });
+if (headerBtn) headerBtn.addEventListener('click', install);
+
+// iOS has no install event: offer the manual route, but only after the visitor
+// has actually looked around rather than on the first paint.
+if (isIos() && !isStandalone() && !dismissed()) {
+  window.setTimeout(() => openBanner('Tap the Share button, then “Add to Home Screen”.'), 12000);
+}

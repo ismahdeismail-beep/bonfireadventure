@@ -81,6 +81,7 @@ export function layout({ title, user, flash, nav = true, currentPath = '', body 
           }).join('')}
         </nav>
         <div class="nav-account">
+          <button type="button" class="btn btn-ghost btn-sm" id="install-header" hidden>Get app</button>
           ${user
             ? `${user.role === 'staff' ? '<a class="btn btn-ghost" href="/staff">Travel desk</a>' : ''}
                <a class="btn btn-ghost" href="/account">${e(user.name)}</a>
@@ -99,12 +100,16 @@ export function layout({ title, user, flash, nav = true, currentPath = '', body 
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="theme-color" content="#b3401f">
+  <meta name="theme-color" content="#E8420A">
   <meta name="description" content="Bonfire Adventures — tours, safaris, beach and international holidays, with real pricing and online booking.">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-title" content="Bonfire">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <meta name="mobile-web-app-capable" content="yes">
   <title>${e(title)} · Bonfire Adventures</title>
-  <link rel="stylesheet" href="/styles.css?v=5443c20">
+  <link rel="stylesheet" href="/styles.css?v=appinstall1">
   <link rel="icon" type="image/webp" href="/favicon.webp?v=1">
-  <link rel="apple-touch-icon" href="/img/favicon-192.webp">
+  <link rel="apple-touch-icon" href="/img/apple-touch-icon.png">
   <link rel="manifest" href="/manifest.webmanifest"></head>
 <body>
   <a class="skip" href="#main">Skip to content</a>
@@ -128,6 +133,17 @@ export function layout({ title, user, flash, nav = true, currentPath = '', body 
     <a href="/destinations" class="mobile-bar-btn${currentPath === '/destinations' ? ' is-active' : ''}"><span>Places</span></a>
     <a href="/account" class="mobile-bar-btn${currentPath.startsWith('/account') ? ' is-active' : ''}"><span>Account</span></a>
   </nav>
+  <aside class="install-banner" id="install-banner" hidden aria-live="polite">
+    <img class="install-icon" src="/img/icon-192.png" alt="" width="34" height="34" loading="lazy" decoding="async">
+    <div class="install-copy">
+      <strong>Get the Bonfire app</strong>
+      <span id="install-hint">Faster booking, works offline, one tap from your home screen.</span>
+    </div>
+    <div class="install-actions">
+      <button type="button" class="btn btn-primary btn-sm" id="install-now">Install</button>
+      <button type="button" class="btn btn-quiet btn-sm" id="install-later">Not now</button>
+    </div>
+  </aside>
   <script src="/app.js" defer></script>
 </body>
 </html>`;
@@ -794,6 +810,21 @@ export function errorPage({ status, message, user }) {
     <h1>${status}</h1>
     <p class="lede">${e(message)}</p>
     <a class="btn btn-primary" href="/">Back to home</a>
+  </section>`;
+}
+
+/**
+ * Cached by the service worker and shown when a navigation cannot reach the
+ * network. Kept tiny so it never costs anything on a normal visit.
+ */
+export function offlinePage() {
+  return `<section class="auth">
+    <h1>You are offline</h1>
+    <p class="lede">The page you asked for needs a connection. Pages you already
+    visited are still available from your device.</p>
+    <p class="muted small">Reconnect, then try again — anything you were filling in
+    stays on this screen.</p>
+    <a class="btn btn-primary" href="/">Try the home page</a>
   </section>`;
 }
 

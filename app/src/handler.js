@@ -24,7 +24,7 @@ let readyPromise = null;
 let readyError = null;
 let catalogue = { destinations: SEED_DESTINATIONS, packages: SEED_PACKAGES };
 
-async function ensureReady() {
+export async function ensureReady() {
   if (readyError) throw new Error(readyError);
   if (!readyPromise) {
     readyPromise = (async () => {
@@ -56,6 +56,19 @@ async function ensureReady() {
 // make sure the original function name isn't duplicated 
 /* ------------------------------------------------------------------ helpers */
 
+/* `/img` holds photography (webp) as well as the PNG app icons, so the type has
+ * to come from the extension rather than a single hard-coded value. */
+const IMAGE_TYPES = {
+  '.webp': 'image/webp',
+  '.png': 'image/png',
+  '.jpg': 'image/jpeg',
+  '.jpeg': 'image/jpeg',
+  '.gif': 'image/gif',
+  '.svg': 'image/svg+xml',
+  '.avif': 'image/avif',
+  '.ico': 'image/x-icon',
+};
+
 function findPackage(slug) {
   return catalogue.packages.find((p) => p.slug === slug) || null;
 }
@@ -76,11 +89,11 @@ function flashFromUrl(url) {
   return null;
 }
 
-function serveStatic(res, file, type) {
+function serveStatic(res, file, type, extraHeaders = {}) {
   const full = path.join(config.publicDir, file);
   if (!full.startsWith(config.publicDir) || !fs.existsSync(full)) return notFound(res);
   const body = fs.readFileSync(full);
-  send(res, 200, body, { 'Content-Type': type, 'Cache-Control': 'no-cache' });
+  send(res, 200, body, { 'Content-Type': type, 'Cache-Control': 'no-cache', ...extraHeaders });
 }
 
 /* -------------------------------------------------------------------- routes */
@@ -99,15 +112,27 @@ const routes = [
 
   ['GET', '/styles.css', (req, res) => serveStatic(res, 'styles.css', 'text/css; charset=utf-8')],
   ['GET', '/app.js', (req, res) => serveStatic(res, 'app.js', 'text/javascript; charset=utf-8')],
+  ['GET', '/sw.js', (req, res) => serveStatic(res, 'sw.js', 'text/javascript; charset=utf-8', {
+    'Service-Worker-Allowed': '/',
+  })],
 
   ['GET', '/favicon.webp', (req, res) => serveStatic(res, 'favicon.webp', 'image/webp')],
   ['GET', '/manifest.webmanifest', (req, res) => serveStatic(res, 'manifest.webmanifest', 'application/manifest+json')],
+  ['GET', '/offline', (req, res, _p, _url, ctx) => {
+    html(res, v.layout({
+      title: 'Offline',
+      user: ctx.user,
+      nav: false,
+      body: v.offlinePage(),
+    }));
+  }],
   ['GET', '/img/:file', (req, res, params) => {
     const dir = path.join(config.publicDir, 'img');
     const full = path.join(dir, params.file);
     if (!full.startsWith(dir) || !fs.existsSync(full)) return notFound(res);
+    const type = IMAGE_TYPES[path.extname(full).toLowerCase()] || 'application/octet-stream';
     send(res, 200, fs.readFileSync(full), {
-      'Content-Type': 'image/webp',
+      'Content-Type': type,
       'Cache-Control': 'public, max-age=31536000, immutable',
     });
   }],
@@ -418,11 +443,20 @@ export async function handleRequest(req, res) {
   } catch (error) {
     console.error(error);
     if (!res.headersSent) {
+      // A storage outage is not a bug in the app; say "try again shortly" and
+      // make it retryable rather than pretending the request was malformed.
+      const upstream = /unreachable|ECONNRESET|ETIMEDOUT|ENOTFOUND|fetch failed|aborted due to timeout/i
+        .test(String(error && error.message));
       html(res, v.layout({
-        title: 'Error',
+        title: upstream ? 'Temporarily unavailable' : 'Error',
         user: null,
-        body: v.errorPage({ status: 500, message: 'Something went wrong on the server.' }),
-      }), 500);
+        body: v.errorPage({
+          status: upstream ? 503 : 500,
+          message: upstream
+            ? 'We could not reach our booking database. Please try again in a moment.'
+            : 'Something went wrong on the server.',
+        }),
+      }), upstream ? 503 : 500, upstream ? { 'Retry-After': '15' } : {});
     }
   }
 }

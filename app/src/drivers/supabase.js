@@ -14,6 +14,12 @@ import { config } from '../config.js';
 const REST = `${config.supabaseUrl}/rest/v1`;
 const TIMEOUT_MS = 10_000;
 
+/* A mobile connection drops packets; a single retry turns most blips into a
+ * slightly slower page instead of a 500. Only replay requests that are safe to
+ * repeat — a POST that times out may already have been applied upstream. */
+const SAFE_TO_RETRY = new Set(['GET', 'HEAD', 'PATCH', 'DELETE']);
+const RETRY_DELAY_MS = 300;
+
 const USERS = 'bonfire_users';
 const SESSIONS = 'bonfire_sessions';
 const RESET = 'bonfire_reset_tokens';
@@ -33,31 +39,40 @@ function headers(prefer) {
 }
 
 async function rest(path, { method = 'GET', body, prefer } = {}) {
-  let res;
-  try {
-    res = await fetch(`${REST}/${path}`, {
-      method,
-      headers: headers(prefer),
-      body: body === undefined ? undefined : JSON.stringify(body),
-      signal: AbortSignal.timeout(TIMEOUT_MS),
-    });
-  } catch (cause) {
-    throw new Error(`Supabase unreachable (${method} ${path}): ${cause.message}`);
-  }
+  const attempts = SAFE_TO_RETRY.has(method) ? 2 : 1;
 
-  const text = await res.text();
-  let data = null;
-  if (text) {
-    try { data = JSON.parse(text); } catch { data = text; }
+  for (let attempt = 1; ; attempt += 1) {
+    let res;
+    try {
+      res = await fetch(`${REST}/${path}`, {
+        method,
+        headers: headers(prefer),
+        body: body === undefined ? undefined : JSON.stringify(body),
+        signal: AbortSignal.timeout(TIMEOUT_MS),
+      });
+    } catch (cause) {
+      // Network-level failure (DNS, reset, abort). Retry once if it is safe.
+      if (attempt < attempts) {
+        await new Promise((r) => setTimeout(r, RETRY_DELAY_MS));
+        continue;
+      }
+      throw new Error(`Supabase unreachable (${method} ${path}): ${cause.message}`);
+    }
+
+    const text = await res.text();
+    let data = null;
+    if (text) {
+      try { data = JSON.parse(text); } catch { data = text; }
+    }
+    if (!res.ok) {
+      const detail = (data && (data.message || data.hint || data.details)) || `${res.status} ${res.statusText}`;
+      const err = new Error(`Supabase ${method} ${path}: ${detail}`);
+      err.status = res.status;
+      err.code = data && data.code;
+      throw err;
+    }
+    return data;
   }
-  if (!res.ok) {
-    const detail = (data && (data.message || data.hint || data.details)) || `${res.status} ${res.statusText}`;
-    const err = new Error(`Supabase ${method} ${path}: ${detail}`);
-    err.status = res.status;
-    err.code = data && data.code;
-    throw err;
-  }
-  return data;
 }
 
 /* ------------------------------------------------------------------- mappers */
