@@ -513,4 +513,28 @@ html { scroll-behavior: smooth; }
   .auth { margin: .5rem; padding: 1.25rem; }
   .booking-form, .stack { gap: .7rem; }
   .btn-lg { padding: .65rem 1.1rem; }
+  /* Overcrowding guardrails */
+  body { overflow-x: hidden; }
+  html { overflow-x: hidden; }
+  img, video, iframe { max-width: 100%; height: auto; }
+  .hero { padding: 1rem 1.1rem; }
+  .hero.has-photo { min-height: 260px; }
+  .hero-stats { gap: .5rem; }
+  .hero-stats strong { font-size: 1.4rem; }
+  .detail-head.has-photo { min-height: 240px; }
+  .confirm.has-photo { min-height: 180px; }
+  .facts, .pay-facts { grid-template-columns: 1fr; }
+  .facts dt, .pay-facts dt { font-weight: 600; }
+  .dest-card { min-height: 130px; }
+  .card { margin-bottom: 0; }
+  .booking-row { padding: .85rem; }
+  .booking-row-side { flex-direction: row; flex-wrap: wrap; gap: .3rem .8rem; align-items: baseline; }
+  .mobile-bar { gap: .15rem; padding: .35rem .4rem calc(.35rem + env(safe-area-inset-bottom, 0px)); }
+  .mobile-bar-btn { padding: .3rem .1rem; font-size: .68rem; }
+  main.page { padding-bottom: 6rem; }
+  .site-footer { padding: 1.25rem 1rem; gap: .75rem; }
+  .footer-note { max-width: none; }
+  .two-col, .detail-grid { gap: 1rem; }
+  .panel { padding: 1rem; }
+  .table-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; }
 }
