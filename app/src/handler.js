@@ -69,6 +69,16 @@ const IMAGE_TYPES = {
   '.ico': 'image/x-icon',
 };
 
+/* Hero background video. Served from our own origin on purpose: the live site
+ * embeds YouTube background videos, which the CSP (`default-src 'self'`, no
+ * `frame-src`) deliberately forbids — and one of the two live videos is a dead
+ * embed anyway. See docs/TODO.md. */
+const VIDEO_TYPES = {
+  '.mp4': 'video/mp4',
+  '.webm': 'video/webm',
+  '.webp': 'image/webp',
+};
+
 function findPackage(slug) {
   return catalogue.packages.find((p) => p.slug === slug) || null;
 }
@@ -133,6 +143,20 @@ const routes = [
     const type = IMAGE_TYPES[path.extname(full).toLowerCase()] || 'application/octet-stream';
     send(res, 200, fs.readFileSync(full), {
       'Content-Type': type,
+      'Cache-Control': 'public, max-age=31536000, immutable',
+    });
+  }],
+  ['GET', '/video/:file', (req, res, params) => {
+    const dir = path.join(config.publicDir, 'video');
+    const full = path.join(dir, params.file);
+    if (!full.startsWith(dir) || !fs.existsSync(full)) return notFound(res);
+    const type = VIDEO_TYPES[path.extname(full).toLowerCase()] || 'application/octet-stream';
+    const body = fs.readFileSync(full);
+    send(res, 200, body, {
+      'Content-Type': type,
+      'Content-Length': String(body.length),
+      // Mobile Safari only autoplays a muted video it can also range-request.
+      'Accept-Ranges': 'bytes',
       'Cache-Control': 'public, max-age=31536000, immutable',
     });
   }],
