@@ -151,14 +151,42 @@ const routes = [
     const full = path.join(dir, params.file);
     if (!full.startsWith(dir) || !fs.existsSync(full)) return notFound(res);
     const type = VIDEO_TYPES[path.extname(full).toLowerCase()] || 'application/octet-stream';
-    const body = fs.readFileSync(full);
-    send(res, 200, body, {
+    const base = {
       'Content-Type': type,
-      'Content-Length': String(body.length),
-      // Mobile Safari only autoplays a muted video it can also range-request.
       'Accept-Ranges': 'bytes',
       'Cache-Control': 'public, max-age=31536000, immutable',
-    });
+    };
+    const size = fs.statSync(full).size;
+
+    /* Real range support. Without this the browser sends `Range: bytes=0-` and
+     * gets the whole file back, so a hero video downloads all 3 MB before it can
+     * start, and every seek re-downloads from the beginning. Chromium always
+     * range-requests media, and iOS refuses to autoplay a video it cannot seek. */
+    const range = req.headers.range;
+    const m = range && /^bytes=(\d*)-(\d*)$/.exec(range.trim());
+    if (m) {
+      let start = m[1] === '' ? null : Number(m[1]);
+      let end = m[2] === '' ? null : Number(m[2]);
+      // `bytes=-N` means "the last N bytes".
+      if (start === null && end !== null) { start = Math.max(0, size - end); end = size - 1; }
+      if (start === null) start = 0;
+      if (end === null || end >= size) end = size - 1;
+
+      if (start > end || start >= size) {
+        return send(res, 416, '', { ...base, 'Content-Range': `bytes */${size}` });
+      }
+      const chunk = fs.createReadStream(full, { start, end });
+      res.writeHead(206, {
+        ...securityHeaders(),
+        ...base,
+        'Content-Range': `bytes ${start}-${end}/${size}`,
+        'Content-Length': String(end - start + 1),
+      });
+      chunk.pipe(res);
+      return undefined;
+    }
+
+    return send(res, 200, fs.readFileSync(full), { ...base, 'Content-Length': String(size) });
   }],
 
   ['GET', '/', (req, res, _p, url, ctx) => {
@@ -259,6 +287,10 @@ const routes = [
 
   ['GET', '/how-booking-works', (req, res, _p, _url, ctx) => {
     html(res, v.layout({ title: 'How booking works', user: ctx.user, body: v.howBookingWorksPage() }));
+  }],
+
+  ['GET', '/services', (req, res, _p, _url, ctx) => {
+    html(res, v.layout({ title: 'Services', user: ctx.user, body: v.servicesPage() }));
   }],
 
   ['GET', '/bookings/:ref', async (req, res, params, url, ctx) => {

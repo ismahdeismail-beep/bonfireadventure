@@ -48,17 +48,40 @@ third-party demo content and should not be ported at all.
 
 - [x] Files copied to `app/public/video/` and served correctly
       (`Accept-Ranges: bytes`, `Content-Type: video/mp4`).
-- [x] Verified in Chromium at 390×844: metadata loads (24.47 s, 1280×720),
-      `play()` succeeds and frames advance.
-- [ ] **P1** Wire the video into the homepage hero as a muted autoplay loop with
-      the poster as fallback, behind `prefers-reduced-motion`.
-- [ ] **P2** Range requests currently return `200` with the whole file rather than
-      `206 Partial Content`. Harmless (video still plays) but it re-sends 3.7 MB
-      on every seek; add real range support if the hero goes live.
+- [x] Verified in Chromium at 390×844: metadata loads, `play()` succeeds and
+      frames advance.
+- [x] **P1** Wired into the homepage hero as a muted autoplay loop with the
+      poster as fallback, behind `prefers-reduced-motion`.
+- [x] **P2** Real range support added — `206 Partial Content` with
+      `Content-Range`, `416` for unsatisfiable ranges, `bytes=-N` suffix
+      handled. Chromium now streams progressively instead of pulling the whole
+      file before the first frame.
+- [x] Re-encoded for mobile: 16 s loop, 854×480, no audio track.
+      mp4 **942 KB** / webm **1211 KB** (was 3.7 MB / 2.9 MB).
+
+**Operability rules the hero obeys** (this was the point of the work — motion
+must never make the site harder to use):
+
+| Rule | Why |
+|---|---|
+| `pointer-events: none` on the video | It must never swallow a tap meant for a button. |
+| Video requested only *after* the `load` event | Measured FCP ~250 ms; the video is never on the critical path. |
+| Pauses when scrolled out of view or the tab is hidden | Stops a phone decoding video behind the fold — the main source of jank. |
+| Skipped entirely for `prefers-reduced-motion` | Both CSS (`display:none`) and JS honour it, and it reacts if toggled mid-session. |
+| Skipped on `save-data` / slow connections | The still photo is the hero; the button is the only way to pull the video. |
+| Only one format ever downloaded | Verified: only `webm` is fetched in Chromium. |
+| Fades in only after a real frame renders | Prevents a black box replacing the hero photo if the video fails. |
+| Button owns *sound*, not play/pause | The video already autoplays, so a play/pause toggle would stop it on first tap. Label always states the next action. |
+| Dead button removed if the video is absent | Never leave a control that does nothing. |
 
 ---
 
-## 2. Services page — entirely missing
+## 2. Services page — done
+
+- [x] `/services` route + view added, linked from the header nav and footer.
+      All six service cards and the four "Our numbers in the world" figures are
+      the live copy, with contact values removed (ADR-0001).
+
 
 The live site has `/services/` with six service cards. This build has **no
 `/services` route at all** (`app/src/handler.js`).
@@ -82,7 +105,6 @@ Supporting content on the same page:
   **183** attractions, **254** information and assistance points
 - H2 "Contact us for a Quote" / H3 "Plan your Next Trip"
 
-- [ ] **P1** Add a `/services` route + view, reachable from the nav and footer.
 - [ ] **P1** Decide whether "Tourist Hotspots" (a live nav item) becomes a
       section on `/services` or its own page.
 

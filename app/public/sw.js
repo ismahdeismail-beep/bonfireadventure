@@ -12,7 +12,7 @@
  * cannot replay somebody else's signed-in page.
  */
 
-const VERSION = 'bonfire-v1';
+const VERSION = 'bonfire-v2';
 const SHELL_CACHE = `${VERSION}-shell`;
 const PAGE_CACHE = `${VERSION}-pages`;
 
@@ -35,6 +35,9 @@ const SHELL = [
   '/img/logo.webp',
   '/img/icon-192.png',
   '/favicon.webp',
+  // Poster only — the video itself is far too big to precache, and it is
+  // optional decoration. It is fetched on demand and falls back to this.
+  '/video/bonfire-hero-poster.webp',
 ];
 
 self.addEventListener('install', (event) => {

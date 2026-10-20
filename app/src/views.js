@@ -61,6 +61,7 @@ const NAV = [
   ['/packages', 'Packages'],
   ['/destinations', 'Destinations'],
   ['/offers', 'Offers'],
+  ['/services', 'Services'],
   ['/how-booking-works', 'How booking works'],
 ];
 
@@ -107,7 +108,7 @@ export function layout({ title, user, flash, nav = true, currentPath = '', body 
   <meta name="apple-mobile-web-app-status-bar-style" content="default">
   <meta name="mobile-web-app-capable" content="yes">
   <title>${e(title)} · Bonfire Adventures</title>
-  <link rel="stylesheet" href="/styles.css?v=appinstall1">
+  <link rel="stylesheet" href="/styles.css?v=heromotion3">
   <link rel="icon" type="image/webp" href="/favicon.webp?v=1">
   <link rel="apple-touch-icon" href="/img/apple-touch-icon.png">
   <link rel="manifest" href="/manifest.webmanifest"></head>
@@ -122,6 +123,7 @@ export function layout({ title, user, flash, nav = true, currentPath = '', body 
     <p class="footer-note">© Bonfire Adventures — curated travel worldwide.</p>
     <nav class="footer-nav">
       <a href="/how-booking-works">How booking works</a>
+      <a href="/services">Services</a>
       <a href="/packages">All packages</a>
       <a href="/offers">Current offers</a>
       <a href="/destinations">Destinations</a>
@@ -144,7 +146,7 @@ export function layout({ title, user, flash, nav = true, currentPath = '', body 
       <button type="button" class="btn btn-quiet btn-sm" id="install-later">Not now</button>
     </div>
   </aside>
-  <script src="/app.js" defer></script>
+  <script src="/app.js?v=heromotion5" defer></script>
 </body>
 </html>`;
 }
@@ -375,6 +377,13 @@ export function homePage({ packages, destinations, user }) {
   return `
   <section class="hero${heroPhoto ? ' has-photo' : ''}">
     ${mediaImage(heroPhoto, 'Bonfire Adventures destination photography', 1800, 900)}
+    <video class="hero-video" id="hero-video" poster="/video/bonfire-hero-poster.webp"
+           muted loop playsinline preload="none" aria-hidden="true" tabindex="-1">
+      <source src="/video/bonfire-hero.webm" type="video/webm">
+      <source src="/video/bonfire-hero.mp4" type="video/mp4">
+      Your browser does not support background video — the photograph above is
+      the hero.
+    </video>
     <div class="hero-text">
       <p class="eyebrow">Beach · Safari · International</p>
       <h1>We take you places. You make the memories.</h1>
@@ -382,7 +391,8 @@ export function homePage({ packages, destinations, user }) {
       <div class="hero-actions">
         <a class="btn btn-primary btn-lg" href="/packages">Browse packages</a>
         <a class="btn btn-ghost btn-lg" href="/how-booking-works">How booking works</a>
-        <a class="btn btn-quiet btn-lg" href="https://www.youtube.com/watch?v=kYF9IefbVk4" rel="noopener noreferrer" target="_blank">▶ Watch our story</a>
+        <button class="btn btn-quiet btn-lg" type="button" id="hero-play"
+                data-play-label="▶ Watch our story" data-stop-label="❚❚ Stop video">▶ Watch our story</button>
       </div>
     </div>
     <div class="hero-stats">
@@ -552,6 +562,64 @@ export function howBookingWorksPage() {
       <li><span class="step-n">3</span><h3>Reserve</h3><p>Submit the request. It is stored with a reference like <strong>BF-XXXXX</strong> and a status: reserved → confirmed, or cancelled/expired.</p></li>
       <li><span class="step-n">4</span><h3>Manage it</h3><p>Log in to see your bookings and their status. Accounts need only a handle and password — we are not collecting contact details in this phase.</p></li>
     </ol>
+  </section>`;
+}
+
+/* The live site has a /services page this build never ported. Copy is the live
+ * wording, with all contact surfaces removed (ADR-0001). The six service cards
+ * are verbatim; the four counters are the live figures. */
+export function servicesPage() {
+  const services = [
+    ['Airline Tickets', 'Our travel agency specializes in providing our customers with the best deals on airline tickets.'],
+    ['Ocean Cruises', 'Luxurious and comfortable way of travel, and passengers can enjoy stunning views of the sea.'],
+    ['Means of Transport', 'Our travel agency offers a variety of means of transport to get you around your destination safely.'],
+    ['Travel itineraries', 'Our team of experts will take care of all the planning and logistics, providing you with a detailed itinerary.'],
+    ['Travel Insurance', 'Travel insurance is an essential part of any trip, providing peace of mind and protection.'],
+    ['Local Guide', 'We can connect you with guides who will take you off the best path and show you their city.'],
+  ];
+  const numbers = [
+    ['420', 'Affiliated hotels with all-inclusive service'],
+    ['365', 'Days in which you can travel the world'],
+    ['183', 'Attractions with specialized and competent local guide'],
+    ['254', 'Information and assistance points in the countries'],
+  ];
+
+  return `
+  <header class="page-head">
+    <h1>Trip planning for the best travel experience possible</h1>
+    <p class="lede">We specialise in travel experiences you will remember — whether that is relaxing on a tropical beach or a cultural adventure. From flights and accommodation to tours and activities, we handle the details so you can focus on the memories.</p>
+  </header>
+
+  <section class="section">
+    <div class="section-head"><h2>Let us help you plan your next adventure</h2></div>
+    <div class="grid">
+      ${services.map(([title, copy]) => `
+      <article class="card">
+        <div class="card-body">
+          <h3>${title}</h3>
+          <p>${copy}</p>
+        </div>
+      </article>`).join('')}
+    </div>
+  </section>
+
+  <section class="section">
+    <div class="section-head"><h2>Our numbers in the world</h2></div>
+    <div class="promise">
+      <p>Our team of experienced travel experts can provide personalised recommendations and advice to create a trip that suits your preferences and budget, across destinations worldwide.</p>
+      <div class="promise-stats">
+        ${numbers.map(([n, label]) => `<div><strong>${n}</strong><span>${label}</span></div>`).join('')}
+      </div>
+    </div>
+  </section>
+
+  <section class="section">
+    <div class="section-head"><h2>Let us help you plan your next getaway</h2></div>
+    <p class="lede">Contact our agency and we will get you a quote in a very short time. Every trip is planned, insured and safe.</p>
+    <div class="hero-actions">
+      <a class="btn btn-primary btn-lg" href="/packages">Browse packages</a>
+      <a class="btn btn-ghost btn-lg" href="/how-booking-works">How booking works</a>
+    </div>
   </section>`;
 }
 

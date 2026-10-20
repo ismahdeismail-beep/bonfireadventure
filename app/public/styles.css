@@ -125,6 +125,22 @@ a { color: var(--accent); }
   border: 1px solid var(--line);
 }
 .hero img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+
+/* Hero background video. Sits under the same darkening overlay as the photo so
+   headline contrast is unchanged. `pointer-events: none` matters most: the video
+   must never swallow a tap meant for a button. It stays at opacity 0 until JS
+   confirms it can actually play, so a failed/blocked load degrades to the photo
+   rather than an empty box. */
+.hero-video {
+  position: absolute; inset: 0; width: 100%; height: 100%;
+  object-fit: cover; opacity: 0; pointer-events: none;
+  transition: opacity .6s var(--ease);
+}
+.hero-video.is-playing { opacity: 1; }
+/* While the video is already moving, the still photo's 22s ken-burns on top of
+   it is two motions competing. Park the photo, keep the video. */
+.hero.has-video img { animation: none; }
+
 .hero.has-photo { min-height: 420px; }
 .hero.has-photo::after {
   content: ""; position: absolute; inset: 0;
@@ -448,6 +464,10 @@ fieldset.field legend { padding: 0 .4rem; color: var(--ink-soft); font-size: .85
     transform: none !important;
   }
   * { transition-duration: .001ms !important; }
+  /* Motion-sensitive users never get the background video at all — JS reads the
+     same media query and refuses to start it, this just makes it impossible. */
+  .hero-video { display: none !important; }
+  .reveal { opacity: 1 !important; transform: none !important; }
 }
 
 /* ---------------------------------------------------------------- promise */
@@ -464,6 +484,22 @@ fieldset.field legend { padding: 0 .4rem; color: var(--ink-soft); font-size: .85
 .scroll-strip-track img { width: 280px; height: 175px; object-fit: cover; border-radius: var(--radius); }
 @keyframes scroll-left { from { transform: translateX(0); } to { transform: translateX(-50%); } }
 @media (prefers-reduced-motion: reduce) { .scroll-strip-track { animation: none; overflow: auto; } }
+
+/* ------------------------------------------------------- scroll reveal (opt-in)
+
+   Deliberately one-directional and CSS-gated: elements are visible unless JS has
+   added `.js-reveal` to <html> AND the element is below the fold. If the script
+   fails to load, or IntersectionObserver is missing, everything simply renders.
+   Never hide content that the user might already be looking at. */
+.js-reveal .reveal {
+  opacity: 0; transform: translateY(14px);
+  transition: opacity .5s var(--ease), transform .5s var(--ease);
+}
+.js-reveal .reveal.is-visible { opacity: 1; transform: none; }
+/* Stagger siblings a touch, capped so nothing feels slow to appear. */
+.js-reveal .reveal.is-visible:nth-child(2) { transition-delay: .06s; }
+.js-reveal .reveal.is-visible:nth-child(3) { transition-delay: .12s; }
+.js-reveal .reveal.is-visible:nth-child(4) { transition-delay: .18s; }
 
 html { scroll-behavior: smooth; }
 .nav-link { position: relative; transition: color .18s ease; }
